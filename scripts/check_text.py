@@ -1,16 +1,27 @@
 """Check project text encoding and localization using only the standard library."""
 
-from collections import Counter
 import json
-from pathlib import Path
 import re
 import subprocess
 import sys
+from collections import Counter
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {
-    ".json", ".md", ".txt", ".yml", ".yaml", ".py", ".svg",
-    ".ts", ".tsx", ".html", ".css", ".mjs", ".cjs",
+    ".json",
+    ".md",
+    ".txt",
+    ".yml",
+    ".yaml",
+    ".py",
+    ".svg",
+    ".ts",
+    ".tsx",
+    ".html",
+    ".css",
+    ".mjs",
+    ".cjs",
 }
 TEXT_NAMES = {"Makefile", "LICENSE", ".gitignore", ".gitattributes", ".editorconfig"}
 
@@ -18,7 +29,9 @@ TEXT_NAMES = {"Makefile", "LICENSE", ".gitignore", ".gitattributes", ".editorcon
 def main() -> int:
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-        cwd=ROOT, check=True, capture_output=True,
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
     )
     errors = []
     documents = {}
