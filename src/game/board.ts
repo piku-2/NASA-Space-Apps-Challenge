@@ -147,11 +147,11 @@ class BoardScene extends Phaser.Scene {
       const selected = index === view.selected
       paper.fillStyle(0x3a322c, 1)
       paper.fillRoundedRect(rect.x, rect.y, rect.w, rect.h, 8)
-      const stroke = selected ? 0xe07a58 : cell.hint ? 0x8ec9c4 : 0x8a5e4c
+      const stroke = selected ? 0xf2c14e : cell.hint ? 0x8ec9c4 : 0x4a6484
       paper.lineStyle(selected ? 3 : 2, stroke, 1)
       paper.strokeRoundedRect(rect.x, rect.y, rect.w, rect.h, 8)
       if (!cell.kind) {
-        dashed(marks, rect.x + 13, rect.y + 13, rect.w - 26, rect.h - 26, 0x6e5348)
+        dashed(marks, rect.x + 13, rect.y + 13, rect.w - 26, rect.h - 26, 0x4a6484)
       } else {
         if (this.textures.exists('icon-' + cell.kind)) {
           const image = this.add.image(rect.x + 72, rect.y + 62, 'icon-' + cell.kind)
@@ -163,22 +163,22 @@ class BoardScene extends Phaser.Scene {
         badge.setDepth(3)
         badge.fillStyle(0x1a1714, 1)
         badge.fillRoundedRect(rect.x + 6, rect.y + 6, 18 + steps * 12, 20, 4)
-        badge.lineStyle(1.5, 0xefe6d6, 1)
+        badge.lineStyle(1.5, 0xd7e7f8, 1)
         badge.strokeRoundedRect(rect.x + 6, rect.y + 6, 18 + steps * 12, 20, 4)
         for (let step = 0; step < steps; step++) {
           const cx = rect.x + 18 + step * 12
           const cy = rect.y + 16
           if (step < cell.level) {
-            badge.fillStyle(0xefe6d6, 1)
+            badge.fillStyle(0xd7e7f8, 1)
             badge.fillCircle(cx, cy, 4)
           }
-          badge.lineStyle(1.5, 0xefe6d6, 1)
+          badge.lineStyle(1.5, 0xd7e7f8, 1)
           badge.strokeCircle(cx, cy, 4)
         }
         const level = this.add.text(rect.x + 8, rect.y + 28, 'Lv.' + cell.level, {
           fontFamily: FONT,
           fontSize: '12px',
-          color: '#efe6d6',
+          color: '#d7e7f8',
         })
         level.setDepth(3)
         if (cell.kind === 'greenhouse') {
@@ -188,14 +188,14 @@ class BoardScene extends Phaser.Scene {
           bar.setDepth(3)
           bar.fillStyle(0x1a1714, 1)
           bar.fillRoundedRect(rect.x + 8, rect.y + rect.h - 18, 78, 10, 2)
-          bar.fillStyle(0xefe6d6, 1)
+          bar.fillStyle(0xd7e7f8, 1)
           bar.fillRoundedRect(rect.x + 8, rect.y + rect.h - 18, Math.max(ratio > 0 ? 4 : 0, 78 * ratio), 10, 2)
-          bar.lineStyle(1.5, 0xefe6d6, 1)
+          bar.lineStyle(1.5, 0xd7e7f8, 1)
           bar.strokeRoundedRect(rect.x + 8, rect.y + rect.h - 18, 78, 10, 2)
           const progress = this.add.text(rect.x + 90, rect.y + rect.h - 20, cell.progress + '/' + days, {
             fontFamily: FONT,
             fontSize: '12px',
-            color: '#efe6d6',
+            color: '#d7e7f8',
           })
           progress.setDepth(3)
         }
@@ -209,7 +209,7 @@ class BoardScene extends Phaser.Scene {
       marks.fillRect(0, 0, width, height)
     }
     if (view.flare && view.phase !== 'night') {
-      marks.lineStyle(4, 0xe07a58, 1)
+      marks.lineStyle(4, 0xf2c14e, 1)
       marks.strokeRect(3, 3, width - 6, height - 6)
     }
     view.cells.forEach((cell, index) => {
@@ -220,7 +220,7 @@ class BoardScene extends Phaser.Scene {
       const mark = this.add.text(rect.x + rect.w - 24, rect.y + rect.h - 26, '★', {
         fontFamily: FONT,
         fontSize: '18px',
-        color: '#efe6d6',
+        color: '#d7e7f8',
       })
       mark.setDepth(6)
     })

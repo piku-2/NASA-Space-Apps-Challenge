@@ -8,10 +8,10 @@
 
 :root {
   --paper: #1a1714;
-  --ink: #efe6d6;
-  --rust: #e07a58;
-  --line: #8a5e4c;
-  --muted: #b3a394;
+  --ink: #d7e7f8;
+  --rust: #f2c14e;
+  --line: #4a6484;
+  --muted: #93a9c4;
   --teal: #8ec9c4;
   color: var(--ink);
   background: var(--paper);
@@ -94,7 +94,7 @@ button:disabled,
   left: 32px;
   top: 8px;
   font-size: 34px;
-  color: var(--rust);
+  color: var(--ink);
   line-height: 1.45;
 }
 
@@ -112,7 +112,7 @@ button:disabled,
   top: 96px;
   font-size: 36px;
   font-weight: 400;
-  color: var(--rust);
+  color: var(--ink);
   line-height: 1.45;
 }
 
@@ -127,7 +127,7 @@ button:disabled,
   position: absolute;
   left: 1080px;
   top: 54px;
-  color: var(--rust);
+  color: var(--ink);
   font-size: 14px;
 }
 
@@ -218,7 +218,7 @@ button:disabled,
   place-items: center;
   font-size: 32px;
   line-height: 1.45;
-  color: var(--rust);
+  color: var(--ink);
 }
 
 #sheet.flare .event-row { top: 16px; font-size: 28px; }
@@ -497,7 +497,7 @@ button.primary.advance { font-size: 28px; line-height: 1.45; }
   left: 32px;
   top: 776px;
   width: 880px;
-  color: var(--rust);
+  color: var(--ink);
   font-size: 14px;
 }
 
@@ -647,7 +647,7 @@ button.primary.advance { font-size: 28px; line-height: 1.45; }
   gap: 12px;
 }
 
-.modal h2 { color: var(--rust); font-size: 30px; font-weight: 400; }
+.modal h2 { color: var(--ink); font-size: 30px; font-weight: 400; }
 .pre { white-space: pre-wrap; }
 .modal .actions { display: flex; gap: 12px; margin-top: auto; }
 .modal .actions button { min-height: 46px; padding: 8px 16px; }
@@ -674,7 +674,7 @@ button.primary.advance { font-size: 28px; line-height: 1.45; }
   right: 0;
   top: 276px;
   text-align: center;
-  color: var(--rust);
+  color: var(--ink);
   font-size: 56px;
   font-weight: 400;
   line-height: 1.45;
