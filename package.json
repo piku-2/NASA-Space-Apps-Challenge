@@ -6,9 +6,11 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/domain/simulation.test.ts src/game/session.test.ts",
+    "test": "node --experimental-strip-types --test src/domain/*.test.ts src/game/*.test.ts",
     "check": "npm run typecheck && npm run test && python3 scripts/check_text.py",
-    "preview": "vite preview --host 127.0.0.1 --port 8000"
+    "preview": "vite preview --host 127.0.0.1 --port 8000",
+    "evaluate": "node --experimental-strip-types scripts/evaluate-strategies.ts",
+    "playtest": "node scripts/playtest.mjs"
   },
   "dependencies": {
     "phaser": "4.2.1"

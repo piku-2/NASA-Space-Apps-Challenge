@@ -160,6 +160,14 @@ export class Session {
     this.save()
   }
 
+  returnSelected(): void {
+    if (!this.guardPlan() || !this.selectedCrew) return
+    this.state = move(this.state, this.selectedCrew, -1)
+    this.selectedCrew = ''
+    this.action = [{ key: 'removed' }]
+    this.save()
+  }
+
   upgrade(): void {
     if (!this.guardPlan()) return
     const cell = this.state.cells[this.selected]
@@ -285,16 +293,16 @@ export class Session {
   private load(): void {
     const store = storage()
     if (!store) return
-    const raw = store.getItem(SAVE_KEY)
-    if (!raw) return
     try {
+      const raw = store.getItem(SAVE_KEY)
+      if (!raw) return
       const data = JSON.parse(raw) as { version?: number; language?: string; state?: unknown; streak?: number; history?: unknown }
       const restored = restore(data.state, Number(data.version ?? 0))
       if (!restored) return
       this.state = restored
       this.language = data.language === 'en' ? 'en' : 'ja'
       this.streak = Math.max(0, Math.trunc(Number(data.streak ?? 0)) || 0)
-      this.history = Array.isArray(data.history) ? data.history.map(asNote).filter((note): note is DayNote => note !== null) : []
+      this.history = Array.isArray(data.history) ? data.history.slice(-40).map(asNote).filter((note): note is DayNote => note !== null) : []
       this.ended = restored.over ? 'loss' : restored.won ? 'win' : ''
     } catch {
       this.saved = false
@@ -353,7 +361,7 @@ function noteFrom(report: Report, day: number): DayNote {
 function asNote(value: unknown): DayNote | null {
   if (!value || typeof value !== 'object') return null
   const note = value as Partial<DayNote>
-  if (typeof note.day !== 'number' || typeof note.event !== 'string') return null
+  if (typeof note.day !== 'number' || !Number.isFinite(note.day) || typeof note.event !== 'string') return null
   return {
     day: Math.trunc(note.day),
     event: note.event,

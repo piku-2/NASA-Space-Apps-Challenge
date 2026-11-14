@@ -11,7 +11,7 @@ import {
   flareHarm,
   forecastChange,
   idle,
-  initial,
+  initial as currentInitial,
   morningAhead,
   move,
   place,
@@ -28,6 +28,11 @@ import {
   type GameState,
 } from './simulation.ts'
 
+// Existing saves must continue to obey their original resource rules.
+function initial(): GameState {
+  return { ...currentInitial(), rules_version: 3 }
+}
+
 function park(state: GameState): GameState {
   for (const id of ['aoi', 'ren', 'mio', 'sora', 'haru']) state = place(state, id, -1)
   return state
@@ -39,7 +44,7 @@ function sameResources(left: GameState, right: GameState): void {
   }
 }
 
-describe('simulation', () => {
+describe('legacy simulation and save compatibility', () => {
   it('starts six crew and forecasts without mutating', () => {
     const state = initial()
     assert.equal(idle(state), 4)
@@ -473,3 +478,39 @@ describe('simulation', () => {
 function intRule(value: number): number {
   return Math.trunc(value)
 }
+
+describe('mission power budget', () => {
+  it('normalizes an interrupted night report for safe rendering of old saves', () => {
+    const state = currentInitial()
+    state.phase = 'night'
+    const source = { ...state, report: { science: 'broken', new_discoveries: null, harvest_cells: [-1, 20, 4] } }
+    const loaded = restore(source, 3)!
+    assert.deepEqual(loaded.report?.new_discoveries, [])
+    assert.deepEqual(loaded.report?.harvest_cells, [4])
+    assert.equal(loaded.report?.science, 0)
+    assert.equal(loaded.report?.event, 'sun')
+    assert.equal(loaded.phase, 'night')
+  })
+  it('charges base power once and preserves old saves without this rule', () => {
+    const state = currentInitial()
+    assert.equal(calculate(state).power, 17)
+    assert.equal(calculate(state).report?.upkeep_power, 5)
+    const night = resolveDay(beginDay(state))
+    assert.deepEqual(resolveDay(night), night)
+    assert.equal(calculate(restore(state, 3)!).power, 17)
+    delete state.rules_version
+    const legacy = restore(state, 3)!
+    assert.equal(legacy.rules_version, 3)
+    assert.equal(calculate(legacy).power, 22)
+  })
+  it('makes solar staffing prevent a forecast power failure without mutating the plan', () => {
+    let state = currentInitial()
+    state.day = 3
+    state.power = 1
+    const copy = structuredClone(state)
+    assert.equal(calculate(state).over, true)
+    const staffed = move(state, 'aoi', 0)
+    assert.equal(calculate(staffed).over, false)
+    assert.deepEqual(state, copy)
+  })
+})

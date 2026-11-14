@@ -25,6 +25,32 @@ const board = mountBoard(boardHost, (index) => {
 
 bind(session, paint)
 
+const WORK_MS = 450
+let workTimer = 0
+let presentedPhase = ''
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function cancelWork(): void {
+  if (workTimer !== 0) window.clearTimeout(workTimer)
+  workTimer = 0
+}
+
+function finishWork(): void {
+  cancelWork()
+  if (session.atTitle || session.state.over || session.state.phase !== 'day') return
+  session.advance()
+  paint()
+}
+
+const step = session.advance.bind(session)
+session.advance = () => {
+  cancelWork()
+  step()
+}
+
 async function boot(): Promise<void> {
   try {
     await document.fonts.load('16px "Source Han Sans JP"')
@@ -42,6 +68,17 @@ function paint(): void {
     playSfx(session.pendingSfx)
   }
   session.pendingSfx = ''
+  const sheet = document.getElementById('sheet')
+  const working = !session.atTitle && !session.state.over && session.state.phase === 'day'
+  sheet?.classList.toggle('working', working && !prefersReducedMotion())
+  if (!working) {
+    cancelWork()
+    presentedPhase = session.atTitle ? '' : session.state.phase
+    return
+  }
+  if (presentedPhase === 'day') return
+  presentedPhase = 'day'
+  workTimer = window.setTimeout(finishWork, prefersReducedMotion() ? 0 : WORK_MS)
 }
 
 void boot()

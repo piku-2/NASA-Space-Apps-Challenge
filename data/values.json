@@ -37,6 +37,7 @@
     "flare_damage": 18,
     "shield_factor": 0.35,
     "daily_survival": 2,
+    "life_support_power": 5,
     "plant_yield": 6,
     "plant_days": 5,
     "plant_power": 1,

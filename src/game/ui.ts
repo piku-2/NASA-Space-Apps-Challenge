@@ -18,6 +18,7 @@ import { Session, type DayNote } from './session.ts'
 import { facilityName, outcomeNotices, renderNotices, type Notice } from './text.ts'
 
 let overlay: '' | 'help' | 'sources' = ''
+let overlayReturn = ''
 
 export function renderShell(root: HTMLElement): void {
   const frame = document.createElement('div')
@@ -37,6 +38,12 @@ export function fitNotebook(): void {
   const frame = document.getElementById('frame')
   const app = document.getElementById('app')
   if (!frame || !app) return
+  if (window.innerWidth < 900) {
+    frame.style.width = '100%'
+    frame.style.height = 'auto'
+    app.style.transform = 'none'
+    return
+  }
   const scale = Math.min(window.innerWidth / 1360, window.innerHeight / 800)
   frame.style.width = `${Math.floor(1360 * scale)}px`
   frame.style.height = `${Math.floor(800 * scale)}px`
@@ -49,6 +56,23 @@ let tipAnchor: HTMLElement | null = null
 
 export function bind(session: Session, onChange: () => void): void {
   const app = document.getElementById('app')
+  app?.addEventListener('keydown', (event) => {
+    const surface = document.querySelector<HTMLElement>('#title:not([hidden]), #shade:not([hidden]) .modal')
+    if (event.key === 'Escape') {
+      hideTip()
+      if (overlay || session.confirmRestart) {
+        overlay = ''
+        session.confirmRestart = false
+        onChange()
+      }
+    }
+    if (!surface || event.key !== 'Tab') return
+    const stops = Array.from(surface.querySelectorAll<HTMLElement>('button, a[href], [tabindex="0"]'))
+    const first = stops[0]
+    const last = stops[stops.length - 1]
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+  })
   app?.addEventListener('pointerover', (event) => {
     if (event.pointerType === 'touch') return
     const el = tipHost(event.target)
@@ -63,7 +87,7 @@ export function bind(session: Session, onChange: () => void): void {
   })
   app?.addEventListener('focusin', (event) => {
     const el = tipHost(event.target)
-    if (el) showTipOn(el)
+    if (el?.matches(':focus-visible')) showTipOn(el)
   })
   app?.addEventListener('focusout', () => {
     if (!tipHold) hideTip()
@@ -106,11 +130,14 @@ export function bind(session: Session, onChange: () => void): void {
     }
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-act]')
     if (!target || target.getAttribute('aria-disabled') === 'true') return
+    hideTip()
     const act = target.dataset.act
     if (act === 'start') session.start()
     else if (act === 'lang') session.toggleLanguage()
     else if (act === 'advance') session.advance()
     else if (act === 'crew') session.selectCrew(target.dataset.id ?? '')
+    else if (act === 'cell') session.selectCell(Number(target.dataset.cell))
+    else if (act === 'wait') session.returnSelected()
     else if (act === 'build') session.chooseBuild(target.dataset.kind ?? '')
     else if (act === 'upgrade') session.upgrade()
     else if (act === 'assign') session.assignIdle()
@@ -122,8 +149,8 @@ export function bind(session: Session, onChange: () => void): void {
     else if (act === 'restart-no') session.confirmRestart = false
     else if (act === 'restart-yes') session.restart()
     else if (act === 'dismiss') session.ended = ''
-    else if (act === 'help') overlay = 'help'
-    else if (act === 'sources') overlay = 'sources'
+    else if (act === 'help') { overlayReturn = 'help'; overlay = 'help' }
+    else if (act === 'sources') { overlayReturn = 'sources'; overlay = 'sources' }
     else if (act === 'close-overlay') overlay = ''
     else return
     onChange()
@@ -131,6 +158,9 @@ export function bind(session: Session, onChange: () => void): void {
 }
 
 export function render(session: Session): void {
+  const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const focusKey = focused?.dataset
+  const keyboardFocus = focused?.matches(':focus-visible')
   const lang = session.language
   const tr = (key: string, args: Array<string | number> = []) => translate(lang, key, args)
   const sheet = document.getElementById('sheet')
@@ -152,6 +182,26 @@ export function render(session: Session): void {
   }
   document.documentElement.lang = lang
   document.title = tr('title')
+  const surface = document.querySelector<HTMLElement>('#title:not([hidden]), #shade:not([hidden]) .modal')
+  const modal = shade?.querySelector<HTMLElement>('.modal')
+  if (modal) {
+    modal.setAttribute('role', 'dialog')
+    modal.setAttribute('aria-modal', 'true')
+    const heading = modal.querySelector('h2')
+    if (heading) { heading.id = 'dialog-title'; modal.setAttribute('aria-labelledby', heading.id) }
+  }
+  sheet?.toggleAttribute('inert', !!surface)
+  document.getElementById('board')?.toggleAttribute('inert', !!surface)
+  if (keyboardFocus && focusKey?.act) {
+    const candidates = (surface || document).querySelectorAll<HTMLElement>('[data-act]')
+    const match = Array.from(candidates).find(el => el.dataset.act === focusKey.act && el.dataset.id === focusKey.id && el.dataset.cell === focusKey.cell && el.dataset.kind === focusKey.kind)
+    match?.focus({ preventScroll: true })
+  }
+  if (surface && !surface.contains(document.activeElement)) surface.querySelector<HTMLElement>('button')?.focus({ preventScroll: true })
+  if (!surface && overlayReturn) {
+    document.querySelector<HTMLElement>(`[data-act="${overlayReturn}"]`)?.focus({ preventScroll: true })
+    overlayReturn = ''
+  }
 }
 
 export function boardView(session: Session): BoardView {
@@ -161,6 +211,8 @@ export function boardView(session: Session): BoardView {
     phase: session.state.phase,
     flare: shownEvent(session.state) === 'flare',
     plantDays: Math.trunc(R.plant_days),
+    maxLevel: Math.trunc(R.max_level),
+    harvestCells: session.state.phase === 'night' ? session.state.report?.harvest_cells ?? [] : [],
     cells: session.state.cells.map((cell, index) => ({
       kind: cell.kind,
       level: cell.level,
@@ -204,12 +256,24 @@ function cellTip(session: Session, index: number): string {
 
 function sheetHtml(session: Session, tr: Tr): string {
   return `
-    ${headerHtml(session, tr)}
-    ${eventHtml(session, tr)}
-    ${buildHtml(session, tr)}
-    ${forecastHtml(session, tr)}
-    ${crewHtml(session, tr)}
-    ${footerHtml(session, tr)}
+    <div class="sheet-header">${headerHtml(session, tr)}</div>
+    <div class="sheet-event">${eventHtml(session, tr)}</div>
+    <div class="sheet-build">${buildHtml(session, tr)}</div>
+    <div class="sheet-forecast">${forecastHtml(session, tr)}</div>
+    <div class="sheet-crew">${crewHtml(session, tr)}</div>
+    <div class="sheet-footer">${footerHtml(session, tr)}</div>
+    <div id="cell-controls" role="group" aria-label="${esc(tr('ready'))}">${session.state.cells.map((cell, index) => {
+      const people = occupants(session.state, index)
+      const target = canPlan(session.state) && (session.buildKind ? cell.kind === '' : session.selectedCrew && cell.kind !== '' && cell.kind !== 'shield' && cell.crew < R.capacity)
+      const harvested = session.state.phase === 'night' && (session.state.report?.harvest_cells ?? []).includes(index)
+      const days = Math.max(1, Math.trunc(R.plant_days))
+      const steps = Math.max(1, Math.trunc(R.max_level))
+      const pips = cell.kind ? `<span class="cell-pips" aria-hidden="true">${Array.from({ length: steps }, (_, step) => `<i class="${step < cell.level ? 'on' : ''}"></i>`).join('')}</span>` : ''
+      const seats = `${people.length}/${Math.trunc(R.capacity)}`
+      const grow = cell.kind === 'greenhouse' ? `<span class="grow-track" aria-hidden="true"><span class="grow-fill" style="width:${Math.round(100 * Math.max(0, Math.min(1, cell.progress / days)))}%"></span></span><span class="cell-mobile-meta">${esc(tr('level', [cell.level]))} · ${seats} · ${cell.progress}/${days}</span>` : cell.kind ? `<span class="cell-mobile-meta">${esc(tr('level', [cell.level]))} · ${seats}</span>` : ''
+      return `<button type="button" class="cell-control ${index === session.selected ? 'selected' : ''} ${target ? 'target' : ''} ${harvested ? 'harvest' : ''}" data-act="cell" data-cell="${index}" data-level="${cell.level}" data-progress="${cell.progress}" ${tipAttr(cellTip(session, index))}>${cell.kind ? `<img class="cell-icon" src="${ICONS[cell.kind]}" alt="">` : '<span class="cell-plus">+</span>'}${pips}<span class="cell-mobile-name">${esc(cell.kind ? facilityName(session.language, cell.kind) : tr('empty'))}</span><span class="cell-mobile-crew">${esc(people.map(id => tr('crew_' + id)).join(' · '))}</span>${grow}${harvested ? '<span class="harvest-mark">★</span>' : ''}${target ? '<span class="target-mark">＋</span>' : ''}</button>`
+    }).join('')}</div>
+    ${session.selectedCrew || session.buildKind ? `<p class="plan-cue" role="status">${esc(session.selectedCrew ? tr('place_cue', [tr('crew_' + session.selectedCrew)]) : tr('build_hint'))}</p>` : ''}
   `
 }
 
@@ -244,6 +308,10 @@ function eventHtml(session: Session, tr: Tr): string {
   const flare = !night && ev === 'flare'
   const nowTip = [tr('event'), tr(ev), tr(ev + '_desc'), ev === 'flare' ? tr('archive') : ''].filter(Boolean).join('\n')
   const nextTip = (night ? tr('next_morning_weather') : tr('tomorrow')) + tr(ahead) + '\n' + tr(ahead + '_desc')
+  if (night && state.report) {
+    const report = state.report
+    return `<section id="event" class="panel night-summary" aria-live="polite"><h2>${esc(tr('outcome'))}</h2><div class="night-health">${esc(tr('health'))} ${signed(report.health)} · ${state.health}%</div>${report.harvest > 0 ? `<p>✓ ${esc(tr('outcome_harvest', [report.harvest]))}</p>` : ''}${report.shortage ? `<p class="down">! ${esc(tr('shortage'))}</p>` : ''}${report.event === 'flare' ? `<p>${esc(tr(report.sheltered ? 'night_shelter' : report.cover_committed ? 'night_cover' : 'night_keep_hit', report.cover_committed ? [report.cover_power, report.damage] : [report.damage]))}</p>` : ''}${report.new_discoveries.map(id => `<p class="discovery">★ ${esc(tr('discovered', [tr('unlock_' + id + '_name')]))}</p>`).join('')}<p class="next-result">${esc(tr('next_short'))}：${esc(tr('wx_' + ahead))}</p></section>`
+  }
   return `
     <section id="event" class="panel">
       <div class="event-row ${ev === 'flare' ? 'down' : ''}" tabindex="0" ${tipAttr(nowTip)}><strong>${esc(tr('wx_' + ev))}</strong></div>
@@ -270,6 +338,7 @@ function forecastHtml(session: Session, tr: Tr): string {
     return `<div class="delta ${value >= 0 ? 'up' : 'down'}" tabindex="0" style="left:${930 + index * 100}px" ${tipAttr(tr(night ? 'outcome' : 'forecast') + ' · ' + tr(key))}><img src="${icon}" alt=""><strong>${signed(value)}</strong></div>`
   }).join('')
   return `
+    <div class="forecast-label">${esc(tr(night ? 'outcome' : 'forecast_short'))}${state.rules_version === 4 ? ` · ${esc(tr('base_draw', [R.life_support_power]))}` : ''}</div>
     ${cols}
     ${warning && !night ? `<p class="warn" tabindex="0" ${tipAttr(warning)}>!</p>` : ''}
   `
@@ -292,12 +361,12 @@ function flareHtml(session: Session, tr: Tr): string {
   return `
     <div class="choice">
       <button type="button" data-act="keep" class="${keepOn ? 'on' : ''}" ${off(planning)} ${tipAttr(tr('choice_keep') + '\n' + keepText)}>
-        <img src="${ICONS.lab}" alt=""><strong>${esc(signed(keep.science - state.science))}</strong>
+        <span>${esc(tr('choice_keep_btn'))}</span><strong>★ ${esc(signed(keep.science - state.science))}</strong><small>${esc(tr('health'))} ${signed(keep.health - state.health)}</small>
       </button>
       <button type="button" data-act="cover" class="${state.flare_cover ? 'on' : ''}" ${off(planning)} ${tipAttr(tr('choice_cover') + '\n' + coverText)}>
-        <img src="${ICONS.shield}" alt=""><strong>${esc(ready ? '−' + (cover.report?.cover_power ?? Math.trunc(R.flare_cover_power)) : '−')}</strong>
+        <span>${esc(tr('choice_cover_btn'))}</span><strong>${esc(tr('power'))} ${esc(ready ? '−' + (cover.report?.cover_power ?? Math.trunc(R.flare_cover_power)) : '−')}</strong><small>${esc(tr('health'))} ${signed(cover.health - state.health)}</small>
       </button>
-      <button type="button" data-act="shelter" ${off(planning)} ${tipAttr(tr('shelter') + '\n' + tr('shelter_info'))}><img src="${ICONS.habitat}" alt=""></button>
+      <button type="button" data-act="shelter" ${off(planning)} ${tipAttr(tr('shelter') + '\n' + tr('shelter_info'))}><span>${esc(tr('shelter_short'))}</span><strong>★ +0</strong><small>${esc(tr('health'))} ±0</small></button>
     </div>
   `
 }
@@ -341,9 +410,10 @@ function crewHtml(session: Session, tr: Tr): string {
     }).join('')
   }).join('')
   return `
-    <div class="crew-mark" tabindex="0" ${tipAttr(tr('waiting') + '\n' + tr('crew_hint'))}>${esc(tr('btn_wait'))}</div>
-    ${coins}
-    ${onCells}
+    <button type="button" class="crew-mark" data-act="wait" ${off(planning && !!session.selectedCrew)} ${tipAttr(tr('waiting') + '\n' + tr('crew_hint'))}>${esc(tr('btn_wait'))}</button>
+    <div class="waiting-coins">${coins}</div>
+    <div class="mobile-roster">${CONFIG.crew.map(entry => coin(entry.id, crewTip(tr, entry.id), 0, 0, 28, session.selectedCrew === entry.id, planning, tr('crew_' + entry.id))).join('')}</div>
+    <div class="placed-coins">${onCells}</div>
   `
 }
 
@@ -354,7 +424,7 @@ function crewTip(tr: Tr, id: string): string {
 
 function coin(id: string, tip: string, cx: number, cy: number, radius: number, selected: boolean, planning: boolean, name: string): string {
   const size = radius * 2
-  return `<button type="button" class="coin ${selected ? 'on' : ''}" data-act="crew" data-id="${esc(id)}" ${off(planning)} style="left:${cx - radius}px;top:${cy - radius}px;width:${size}px;height:${size}px" ${tipAttr(tip)}><img src="${ICONS.crew}" alt=""><span>${esc(name)}</span></button>`
+  return `<button type="button" class="coin ${selected ? 'on' : ''}" data-act="crew" data-id="${esc(id)}" ${off(planning)} style="left:${cx - radius}px;top:${cy - radius}px;width:${size}px;height:${size}px" ${tipAttr(tip)}><img src="${ICONS.crew}" alt=""><img class="specialty" src="${ICONS[specialty(id)]}" alt=""><span>${esc(name)}</span></button>`
 }
 
 function footerHtml(session: Session, tr: Tr): string {
@@ -400,7 +470,8 @@ function footerHtml(session: Session, tr: Tr): string {
 function modalHtml(session: Session, tr: Tr): string {
   const state = session.state
   if (state.over) {
-    return `<div class="modal"><h2>${esc(tr('loss_title'))}</h2><p class="pre">${esc(tr('loss_body'))}</p><div class="actions"><button type="button" class="primary" data-act="restart-yes">${esc(tr('restart_confirm'))}</button></div></div>`
+    const cause = state.survival < 0 ? 'loss_survival' : state.power < 0 ? 'loss_power' : 'loss_health'
+    return `<div class="modal"><h2>${esc(tr('loss_title'))}</h2><p class="pre">${esc(tr(cause))}</p><p>${esc(tr('goal', [state.science, Math.min(shownDay(state), 15)]))}</p><div class="actions"><button type="button" class="primary" data-act="restart-yes">${esc(tr('restart_confirm'))}</button></div></div>`
   }
   if (session.ended === 'win') {
     return `<div class="modal"><h2>${esc(tr('win_title'))}</h2><p class="pre">${esc(tr('win_body'))}</p><div class="actions"><button type="button" class="primary" data-act="dismiss">${esc(tr('continue'))}</button></div></div>`
@@ -511,6 +582,11 @@ function showTipText(text: string, clientX: number, clientY: number, lift: numbe
   if (!tip || !app) return
   tip.hidden = false
   tip.textContent = text
+  if (window.innerWidth < 900) {
+    tip.style.left = `${Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, clientX - tip.offsetWidth / 2))}px`
+    tip.style.top = `${Math.max(8, Math.min(window.innerHeight - tip.offsetHeight - 8, clientY - tip.offsetHeight - 10))}px`
+    return
+  }
   const frame = app.getBoundingClientRect()
   const scale = frame.width / 1360 || 1
   const tw = tip.offsetWidth

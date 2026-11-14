@@ -4,6 +4,30 @@ import { crewCell, idle, initial } from '../domain/simulation.ts'
 import { Session } from './session.ts'
 
 describe('session', () => {
+  it('starts safely when storage reads are denied by the browser', () => {
+    const holder = globalThis as { localStorage?: Storage }
+    const previous = holder.localStorage
+    holder.localStorage = { getItem: () => { throw new Error('storage denied') } } as unknown as Storage
+    try {
+      const session = new Session()
+      assert.equal(session.state.day, 1)
+      assert.equal(session.saved, false)
+    } finally {
+      if (previous) holder.localStorage = previous
+      else delete holder.localStorage
+    }
+  })
+  it('returns the selected person to standby only in the morning', () => {
+    const session = new Session()
+    session.selectCrew('ren')
+    session.returnSelected()
+    assert.equal(crewCell(session.state, 'ren'), -1)
+    session.selectCrew('aoi')
+    session.advance()
+    session.selectedCrew = 'aoi'
+    session.returnSelected()
+    assert.equal(crewCell(session.state, 'aoi'), 10)
+  })
   it('places crew, steps morning day night, and records one day', () => {
     const session = new Session()
     assert.equal(session.state.roster.length, 6)

@@ -22,6 +22,8 @@ export interface BoardView {
   phase: string
   flare: boolean
   plantDays: number
+  maxLevel: number
+  harvestCells: number[]
 }
 
 interface Metrics {
@@ -156,17 +158,44 @@ class BoardScene extends Phaser.Scene {
           image.setDisplaySize(108, 108)
           image.setDepth(2)
         }
-        const level = this.add.text(rect.x + 8, rect.y + 8, 'L' + cell.level, {
+        const steps = Math.max(1, view.maxLevel)
+        const badge = this.add.graphics()
+        badge.setDepth(3)
+        badge.fillStyle(0xfff6ea, 1)
+        badge.fillRoundedRect(rect.x + 6, rect.y + 6, 18 + steps * 12, 20, 4)
+        badge.lineStyle(1.5, 0x303e52, 1)
+        badge.strokeRoundedRect(rect.x + 6, rect.y + 6, 18 + steps * 12, 20, 4)
+        for (let step = 0; step < steps; step++) {
+          const cx = rect.x + 18 + step * 12
+          const cy = rect.y + 16
+          if (step < cell.level) {
+            badge.fillStyle(0x303e52, 1)
+            badge.fillCircle(cx, cy, 4)
+          }
+          badge.lineStyle(1.5, 0x303e52, 1)
+          badge.strokeCircle(cx, cy, 4)
+        }
+        const level = this.add.text(rect.x + 8, rect.y + 28, 'Lv.' + cell.level, {
           fontFamily: FONT,
-          fontSize: '11px',
+          fontSize: '12px',
           color: '#303e52',
         })
         level.setDepth(3)
         if (cell.kind === 'greenhouse') {
-          const progress = this.add.text(rect.x + 84, rect.y + 8, cell.progress + '/' + view.plantDays, {
+          const days = Math.max(1, view.plantDays)
+          const ratio = Math.max(0, Math.min(1, cell.progress / days))
+          const bar = this.add.graphics()
+          bar.setDepth(3)
+          bar.fillStyle(0xfff6ea, 1)
+          bar.fillRoundedRect(rect.x + 8, rect.y + rect.h - 18, 78, 10, 2)
+          bar.fillStyle(0x303e52, 1)
+          bar.fillRoundedRect(rect.x + 8, rect.y + rect.h - 18, Math.max(ratio > 0 ? 4 : 0, 78 * ratio), 10, 2)
+          bar.lineStyle(1.5, 0x303e52, 1)
+          bar.strokeRoundedRect(rect.x + 8, rect.y + rect.h - 18, 78, 10, 2)
+          const progress = this.add.text(rect.x + 90, rect.y + rect.h - 20, cell.progress + '/' + days, {
             fontFamily: FONT,
-            fontSize: '11px',
-            color: '#3e7c78',
+            fontSize: '12px',
+            color: '#303e52',
           })
           progress.setDepth(3)
         }
@@ -183,6 +212,18 @@ class BoardScene extends Phaser.Scene {
       marks.lineStyle(4, 0xb65030, 1)
       marks.strokeRect(3, 3, width - 6, height - 6)
     }
+    view.cells.forEach((cell, index) => {
+      if (!view.harvestCells.includes(index)) return
+      const rect = cellRect(metrics, index)
+      marks.lineStyle(4, 0x2f6f4e, 1)
+      marks.strokeRoundedRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6, 8)
+      const mark = this.add.text(rect.x + rect.w - 24, rect.y + rect.h - 26, '★', {
+        fontFamily: FONT,
+        fontSize: '18px',
+        color: '#243044',
+      })
+      mark.setDepth(6)
+    })
   }
 }
 

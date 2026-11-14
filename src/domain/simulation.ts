@@ -14,6 +14,7 @@ export interface CrewPlace {
 }
 
 export interface Report {
+  upkeep_power?: number
   harvest: number
   survival: number
   power: number
@@ -37,6 +38,8 @@ export interface Report {
 }
 
 export interface GameState {
+  // Missing means legacy rules, so existing saves keep their original budget.
+  rules_version?: number
   day: number
   power: number
   material: number
@@ -115,6 +118,7 @@ function rule(name: string, fallback = 0): number {
 export function initial(): GameState {
   const start = CONFIG.initial
   const state: GameState = {
+    rules_version: 4,
     day: int(start.day),
     power: int(start.power),
     material: int(start.material),
@@ -389,6 +393,9 @@ export function calculate(state: GameState): GameState {
     next.power += output
   }
 
+  const upkeep = state.rules_version === 4 ? int(rule('life_support_power')) : 0
+  next.power -= upkeep
+
   if (state.shelter) {
     next.power -= int(rule('shelter_power'))
   } else {
@@ -479,6 +486,7 @@ export function calculate(state: GameState): GameState {
   next.over = int(next.survival) < 0 || int(next.power) < 0 || int(next.health) <= 0
   next.won = Boolean(state.won) || (int(next.day) > int(rule('days')) && int(next.science) >= int(rule('target')) && !next.over)
   next.report = {
+    upkeep_power: upkeep,
     harvest,
     survival: int(next.survival) - survivalBefore,
     power: int(next.power) - powerBefore,
@@ -551,6 +559,7 @@ export function restore(candidate: unknown, version: number): GameState | null {
   }
 
   const normalized = state as unknown as GameState
+  normalized.rules_version = state.rules_version === 4 ? 4 : 3
   normalized.cells = cells as Cell[]
   if (!installRoster(normalized)) return null
   if (idle(normalized) < 0) return null
@@ -565,6 +574,16 @@ export function restore(candidate: unknown, version: number): GameState | null {
   }
   normalized.discoveries = kept
   if (!isDict(normalized.report)) delete normalized.report
+  else {
+    // Older or interrupted saves may contain a partial night report.
+    const report = normalized.report as unknown as Record<string, unknown>
+    const numeric = ['harvest', 'survival', 'power', 'material', 'science', 'health', 'damage', 'produced_survival', 'produced_power', 'produced_material', 'produced_science', 'healed', 'research_paused', 'cover_power', 'upkeep_power']
+    for (const key of numeric) report[key] = isNum(report[key]) ? int(report[key]) : 0
+    for (const key of ['shortage', 'sheltered', 'cover_committed']) report[key] = report[key] === true
+    report.event = typeof report.event === 'string' && CONFIG.events.includes(report.event) ? report.event : eventOf({ day: Math.max(1, normalized.day - 1) })
+    report.new_discoveries = Array.isArray(report.new_discoveries) ? report.new_discoveries.filter(id => id === 'shielding' || id === 'crops') : []
+    report.harvest_cells = Array.isArray(report.harvest_cells) ? report.harvest_cells.filter(index => isNum(index) && Number.isInteger(index) && index >= 0 && index < 18) : []
+  }
   normalized.over = Boolean(normalized.over)
   normalized.won = Boolean(normalized.won)
   normalized.shield = Boolean(normalized.shield)

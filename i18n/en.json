@@ -70,7 +70,7 @@
   "restart_confirm": "Start fresh",
   "close": "Close",
   "help_title": "Your little outpost guide",
-  "help_body": "1. Plan in the morning. Crew, then a building.\n2. Standby returns the selected crew member.\n3. A right-side building, then an empty tile.\n4. Upgrades and shelter are morning choices.\n5. Start work, then night notes, then morning.\n6. Survival −2 daily. Water +1. Ren adds +1.\n7. Plants harvest every 5 working days. Mio adds +3.\n8. Research 10 strengthens the shield.\n9. Research 20 grows harvests. Research is not spent.\n10. On a flare, keep research or pause the lab for cover.\n11. Shelter rests everyone. A built shield stays. Night motion is visual.\n\nSurvive 15 days and gather 30 research to win.\nNegative survival or power, or zero health, ends the run.\nCrew and power are required. Shelter pauses production.",
+  "help_body": "1. Plan in the morning. Crew, then a building.\n2. Standby returns the selected crew member.\n3. A right-side building, then an empty tile.\n4. Upgrades and shelter are morning choices.\n5. Start runs the day, then shows night. Results skips to night. Next morning stays manual.\n6. Survival −2 daily. Water +1. Ren adds +1.\n7. Plants harvest every 5 working days. Mio adds +3.\n8. Research 10 strengthens the shield.\n9. Research 20 grows harvests. Research is not spent.\n10. On a flare, keep research or pause the lab for cover.\n11. Shelter rests everyone. A built shield stays. Night motion is visual.\n\nSurvive 15 days and gather 30 research to win.\nNegative survival or power, or zero health, ends the run.\nCrew and power are required. Shelter pauses production.\nNew bases use 5 power/day for life support. Balance solar and lab crew (game balance, not NASA measurements). Old saves keep their original rules.",
   "sources_title": "Real space. Playful rules.",
   "sources_body": "Warnings are inspired by NASA SDO’s observation\nof an X8.7 flare on May 14, 2024, not live weather.\n\nSurvival combines water and food into one game resource.\nResource units, production and health effects are\ngame balance, not NASA measurements.",
   "source_flare": "NASA: solar flare archive ↗",
@@ -88,7 +88,7 @@
   "ready": "Your plan for the day",
   "no_work": "Sheltering: crew work is paused",
   "language": "日本語",
-  "footer": "JUNIOR ASTRONAUT MISSION TRAINER  ·  GODOT EDITION",
+  "footer": "JUNIOR ASTRONAUT MISSION TRAINER · MARS NOTEBOOK",
   "resource_tip": "Blue gains, red costs. Buildings use power in grid order.",
   "facility_water": "Water recycler",
   "survival": "Survival",
@@ -210,5 +210,11 @@
   "flare_alert": "Flare alert! Choose how to protect the crew",
   "unlock_new": "NEW",
   "history": "Days so far",
-  "history_empty": "No finished day yet."
+  "history_empty": "No finished day yet.",
+  "place_cue": "{0} → choose a building",
+  "loss_survival": "Water and food ran out. Staff the recycler and keep supplies for the days before harvest.",
+  "loss_power": "Power ran out. Staff solar arrays and try resting the lab during dust storms.",
+  "loss_health": "Health ran out. Try shields or shelter before flares, and recover in the habitat.",
+  "base_draw": "Base power −{0}/day",
+  "forecast_short": "Forecast"
 }
