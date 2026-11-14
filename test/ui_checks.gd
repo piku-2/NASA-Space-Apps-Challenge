@@ -65,6 +65,16 @@ func run_checks() -> void:
  assert(game.trk("title")=="Mars Outpost")
  assert(game.trk("survival")=="Survival")
  game.set_language("ja")
+ # Every localized glyph must be bundled, without OS font fallback.
+ assert(game.font is FontFile)
+ for lang: String in ["ja", "en"]:
+  game.set_language(lang)
+  for value: String in game.words.values():
+   for index: int in range(value.length()):
+    var code: int = value.unicode_at(index)
+    if code > 32:
+     assert(game.font.has_char(code), "Missing glyph: " + value[index])
+ game.set_language("ja")
  game.save_game()
  var original: Dictionary=game.state.duplicate(true)
  game.state=game.Sim.initial()

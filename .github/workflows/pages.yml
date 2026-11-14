@@ -27,14 +27,10 @@ jobs:
           include-templates: true
 
       - name: Run checks
-        run: |
-          GODOT_MCP_RUNTIME=0 godot --headless --path . -s res://test/run_tests.gd
-          GODOT_MCP_RUNTIME=0 godot --headless --path . -s res://test/ui_checks.gd
+        run: make test
 
       - name: Export Web
-        run: |
-          mkdir -p dist
-          godot --headless --export-release "Web" dist/index.html
+        run: make export-web
 
       - uses: actions/upload-pages-artifact@v3
         with:

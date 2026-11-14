@@ -1,9 +1,36 @@
-.agents
-AGENTS.md
-.codex
-godot-gdscript.md
-/tripo-out
-assets
-screenshots
-.godot
+# Godot caches and export credentials.
+/.godot/
+/.mcp_toolkit_backups/
 *.import
+/export_credentials.cfg
+
+# Exported builds and captures.
+/dist/
+/build/
+/web/
+/screenshots/
+/tripo-out/
+
+# Local editor and agent state. Shared instructions remain versioned.
+/.idea/
+/.vscode/
+/.agents/
+/.codex/
+/.aws/
+/.grok/
+/.grok-*/
+
+# Secrets and local overrides.
+.env
+.env.*
+!.env.example
+*.local
+
+# OS and tool caches.
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+__pycache__/
+*.py[cod]

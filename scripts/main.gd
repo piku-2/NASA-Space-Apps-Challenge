@@ -17,14 +17,13 @@ var crew_source: int = -2
 var message: String = ""
 var saved: bool = true
 var ui: Control
-var font: SystemFont = SystemFont.new()
+var font: FontFile = preload("res://ui_assets/fonts/SourceHanSansJP-Regular.otf")
 var icons: Dictionary = {}
 var hover_cell: int = -1
 var tick: float = 0.0
 var sound: AudioStreamPlayer
 const SAVE_PATH: String = "user://mars_notebook_v1.json"
 func _ready() -> void:
- font.font_names = PackedStringArray(["Noto Sans CJK JP", "Yu Gothic", "Hiragino Sans", "Meiryo", "Noto Sans", "sans-serif"])
  theme = Theme.new()
  theme.default_font = font
  theme.default_font_size = 18
