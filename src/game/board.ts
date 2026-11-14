@@ -44,7 +44,7 @@ export function mountBoard(parent: HTMLElement, select: (index: number) => void)
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    backgroundColor: '#1a2433',
+    backgroundColor: '#7d8188',
     banner: false,
     scale: {
       mode: Phaser.Scale.NONE,
@@ -145,40 +145,41 @@ class BoardScene extends Phaser.Scene {
     view.cells.forEach((cell, index) => {
       const rect = cellRect(metrics, index)
       const selected = index === view.selected
-      paper.fillStyle(0x243044, 1)
+      paper.fillStyle(selected ? 0xb8c0c8 : 0x9aa0a8, 1)
       paper.fillRoundedRect(rect.x, rect.y, rect.w, rect.h, 8)
-      const stroke = selected ? 0x6eb0ea : cell.hint ? 0x8ec4f0 : 0x3e6288
-      paper.lineStyle(selected ? 3 : 2, stroke, 1)
+      const stroke = selected ? 0x0f1115 : cell.hint ? 0x0f1115 : 0x4a4e54
+      paper.lineStyle(selected || cell.hint ? 3 : 2, stroke, 1)
       paper.strokeRoundedRect(rect.x, rect.y, rect.w, rect.h, 8)
       if (!cell.kind) {
-        dashed(marks, rect.x + 13, rect.y + 13, rect.w - 26, rect.h - 26, 0x3e6288)
+        dashed(marks, rect.x + 13, rect.y + 13, rect.w - 26, rect.h - 26, 0x4a4e54)
       } else {
         if (this.textures.exists('icon-' + cell.kind)) {
           const image = this.add.image(rect.x + 72, rect.y + 62, 'icon-' + cell.kind)
           image.setDisplaySize(108, 108)
+          image.setTint(0x0f1115)
           image.setDepth(2)
         }
         const steps = Math.max(1, view.maxLevel)
         const badge = this.add.graphics()
         badge.setDepth(3)
-        badge.fillStyle(0x12161c, 1)
+        badge.fillStyle(0x0f1115, 1)
         badge.fillRoundedRect(rect.x + 6, rect.y + 6, 18 + steps * 12, 20, 4)
-        badge.lineStyle(1.5, 0xf2c14e, 1)
+        badge.lineStyle(1.5, 0xf0f0f2, 1)
         badge.strokeRoundedRect(rect.x + 6, rect.y + 6, 18 + steps * 12, 20, 4)
         for (let step = 0; step < steps; step++) {
           const cx = rect.x + 18 + step * 12
           const cy = rect.y + 16
           if (step < cell.level) {
-            badge.fillStyle(0xf2c14e, 1)
+            badge.fillStyle(0xf0f0f2, 1)
             badge.fillCircle(cx, cy, 4)
           }
-          badge.lineStyle(1.5, 0xf2c14e, 1)
+          badge.lineStyle(1.5, 0xf0f0f2, 1)
           badge.strokeCircle(cx, cy, 4)
         }
         const level = this.add.text(rect.x + 8, rect.y + 28, 'Lv.' + cell.level, {
           fontFamily: FONT,
           fontSize: '12px',
-          color: '#f2c14e',
+          color: '#0f1115',
         })
         level.setDepth(3)
         if (cell.kind === 'greenhouse') {
@@ -186,41 +187,41 @@ class BoardScene extends Phaser.Scene {
           const ratio = Math.max(0, Math.min(1, cell.progress / days))
           const bar = this.add.graphics()
           bar.setDepth(3)
-          bar.fillStyle(0x12161c, 1)
+          bar.fillStyle(0x4a4e54, 1)
           bar.fillRoundedRect(rect.x + 8, rect.y + rect.h - 18, 78, 10, 2)
-          bar.fillStyle(0x6eb0ea, 1)
+          bar.fillStyle(0xf0f0f2, 1)
           bar.fillRoundedRect(rect.x + 8, rect.y + rect.h - 18, Math.max(ratio > 0 ? 4 : 0, 78 * ratio), 10, 2)
-          bar.lineStyle(1.5, 0x6eb0ea, 1)
+          bar.lineStyle(1.5, 0x4a4e54, 1)
           bar.strokeRoundedRect(rect.x + 8, rect.y + rect.h - 18, 78, 10, 2)
           const progress = this.add.text(rect.x + 90, rect.y + rect.h - 20, cell.progress + '/' + days, {
             fontFamily: FONT,
             fontSize: '12px',
-            color: '#f2c14e',
+            color: '#0f1115',
           })
           progress.setDepth(3)
         }
       }
     })
     if (view.phase === 'night') {
-      marks.fillStyle(0x05070d, 0.38)
+      marks.fillStyle(0x0f1115, 0.45)
       marks.fillRect(0, 0, width, height)
     } else if (view.phase === 'day') {
-      marks.fillStyle(0xb9cce6, 0.12)
+      marks.fillStyle(0xf0f0f2, 0.1)
       marks.fillRect(0, 0, width, height)
     }
     if (view.flare && view.phase !== 'night') {
-      marks.lineStyle(4, 0x6eb0ea, 1)
+      marks.lineStyle(4, 0xf0f0f2, 1)
       marks.strokeRect(3, 3, width - 6, height - 6)
     }
     view.cells.forEach((cell, index) => {
       if (!view.harvestCells.includes(index)) return
       const rect = cellRect(metrics, index)
-      marks.lineStyle(4, 0x6eb0ea, 1)
+      marks.lineStyle(4, 0x0f1115, 1)
       marks.strokeRoundedRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6, 8)
       const mark = this.add.text(rect.x + rect.w - 24, rect.y + rect.h - 26, '★', {
         fontFamily: FONT,
         fontSize: '18px',
-        color: '#f2c14e',
+        color: '#0f1115',
       })
       mark.setDepth(6)
     })
