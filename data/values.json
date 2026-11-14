@@ -38,8 +38,24 @@
     "daily_survival": 2,
     "plant_yield": 6,
     "plant_days": 5,
-    "plant_power": 1
+    "plant_power": 1,
+    "solar_expert": 2,
+    "water_expert": 1,
+    "plant_expert": 3,
+    "lab_expert": 2,
+    "mine_expert": 2,
+    "unlock_shield_at": 10,
+    "shield_factor_plus": 0.2,
+    "unlock_plant_at": 20,
+    "plant_unlock_bonus": 3
   },
+  "crew": [
+    {"id": "aoi", "specialty": "solar"},
+    {"id": "ren", "specialty": "water"},
+    {"id": "mio", "specialty": "greenhouse"},
+    {"id": "sora", "specialty": "lab"},
+    {"id": "haru", "specialty": "mine"}
+  ],
   "facilities": [
     "solar",
     "water",

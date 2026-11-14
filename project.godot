@@ -12,7 +12,7 @@ config_version=5
 
 config/name="小さな火星基地 · Mars Notebook"
 run/main_scene="res://scenes/main.tscn"
-config/features=PackedStringArray("4.6", "GL Compatibility")
+config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
 
@@ -32,7 +32,6 @@ enabled=PackedStringArray("res://addons/godot_mcp_toolkit/plugin.cfg")
 
 [mcp_toolkit]
 
-updates/check_for_updates=false
 updates/install_mode="manual"
 
 [rendering]
