@@ -1,1 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><g fill="none" stroke="#b65030" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14q22-12 42 8L37 16 12 54l-7-5 25-37M43 12l13 12"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<g fill="none" stroke="#b65030" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- handle -->
+  <line x1="16" y1="52" x2="36" y2="30"/>
+  <!-- pickaxe head: pixel-art style -->
+  <polyline points="36,30 30,22 32,16 40,10 50,12 54,20 50,24 46,22 42,26 48,30 44,36 38,32 36,30"/>
+</g>
+</svg>

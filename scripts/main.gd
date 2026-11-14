@@ -22,7 +22,6 @@ var saved: bool = true
 var ui: Control
 var font: FontFile = preload("res://ui_assets/fonts/SourceHanSansJP-Regular.otf")
 var icons: Dictionary = {}
-var facility_cards: Dictionary = {}
 var hover_cell: int = -1
 var tick: float = 0.0
 var fx_t: float = 1.0
@@ -75,11 +74,6 @@ func _ready() -> void:
   icons[key] = load("res://ui_assets/"+key+".svg")
  if ResourceLoader.exists("res://ui_assets/logo.png"):
   icons["logo"] = load("res://ui_assets/logo.png")
- for fkey: String in ["solar","water","greenhouse","lab","habitat","mine","shield"]:
-  var jpg_path: String = "res://ui_assets/facilities/facility_" + fkey + ".jpg"
-  var png_path: String = "res://ui_assets/facilities/facility_" + fkey + ".png"
-  if ResourceLoader.exists(jpg_path): facility_cards[fkey] = load(jpg_path)
-  elif ResourceLoader.exists(png_path): facility_cards[fkey] = load(png_path)
  state = Sim.initial()
  load_game()
  set_language(language)
@@ -199,10 +193,7 @@ func icon_button(kind: String, rect: Rect2, hint: String, action: Callable, acti
  if active:
   b.add_theme_stylebox_override("normal",style(Color("d4e7de"),TEAL,3))
   b.add_theme_stylebox_override("hover",style(Color("c3ded3"),TEAL,3))
- if facility_cards.has(kind):
-  b.icon = facility_cards[kind]
-  b.add_theme_constant_override("icon_max_width",44)
- elif icons.has(kind):
+ if icons.has(kind):
   b.icon = icons[kind]
   b.add_theme_constant_override("icon_max_width",42)
  b.expand_icon = true
@@ -354,10 +345,7 @@ func refresh() -> void:
  crops_tip.tooltip_text = trk("unlock_crops_tip")
  ui.add_child(shield_tip)
  ui.add_child(crops_tip)
- var action_key: String = "start_day"
- if phase == "day": action_key = "see_results"
- elif phase == "night": action_key = "next_morning"
- button(trk(action_key),Rect2(930,659,390,69),on_primary,true,bool(state.over))
+ button(trk("advance_day"),Rect2(930,659,390,69),on_primary,true,bool(state.over))
  icon_button("book",Rect2(32,739,55,40),trk("sources"),func() -> void: open_modal("sources"))
  icon_button("undo",Rect2(99,739,55,40),trk("restart"),func() -> void: open_modal("restart"))
  if at_title: add_title_controls()
@@ -750,14 +738,8 @@ func _draw() -> void:
    if i==hover_cell: centered("+",rect,33,LINE)
   else:
    var kind_str: String = str(c.kind)
-   if facility_cards.has(kind_str):
-    var cw: float = 90.0
-    var ch: float = 134.0
-    var cpos: Vector2 = Vector2(rect.position.x + (rect.size.x - cw) * 0.5, rect.position.y + 6.0)
-    draw_texture_rect(facility_cards[kind_str], Rect2(cpos, Vector2(cw, ch)), false)
-   else:
-    draw_facility_mark(kind_str, rect, int(c.crew))
-    icon(kind_str, Rect2(rect.position+Vector2(27,13), Vector2(90,90)))
+   draw_facility_mark(kind_str, rect, int(c.crew))
+   icon(kind_str, Rect2(rect.position+Vector2(27,13), Vector2(90,90)))
    if c.kind=="greenhouse":
     var prog_text: String = str(int(c.get("progress",0)))+"/"+str(int(Sim.R.plant_days))
     var prog_pill: Rect2 = Rect2(rect.position.x+82, rect.position.y+6, 38, 18)
@@ -824,10 +806,7 @@ func _draw() -> void:
  var cell: Dictionary=state.cells[selected]
  if cell.kind!="":
   var k_sel: String = str(cell.kind)
-  if facility_cards.has(k_sel):
-   draw_texture_rect(facility_cards[k_sel],Rect2(182,736,26,38),false)
-  else:
-   icon(k_sel,Rect2(180,741,37,37))
+  icon(k_sel,Rect2(180,741,37,37))
   var detail: String=facility_name(k_sel)+"  "+trk("level",[int(cell.level)])
   if cell.kind=="greenhouse":
    detail += "  "+trk("plant_progress",[int(Sim.R.plant_days)-int(cell.get("progress",0))])
@@ -1154,9 +1133,11 @@ func on_stage_enter(stage: String) -> void:
  if stage in bar:
   var anchor: Vector2 = Vector2(265 + bar.find(stage) * 245 + 60, 46)
   var v: int = int(report.get(stage, 0))
+  sfx.pitch_scale = 1.0 + bar.find(stage) * 0.1
   play_sfx(stage)
   if v != 0: spawn_float(signed(v), anchor + Vector2(0, 34), gain_color(v), "", 18, 1.0)
   spawn_sparks(anchor, 5 + tier * 5, gain_color(v), 90.0 + tier * 30.0)
+  sfx.pitch_scale = 1.0
   return
  match stage:
   "health":
@@ -1188,8 +1169,12 @@ func cheer_streak() -> void:
  spawn_sparks(Vector2(464, 218), 10 + streak_tier() * 6, GOLD, 130.0)
 # The big button first finishes the show, then closes the banner, then moves on.
 func on_primary() -> void:
- if str(state.get("phase", "")) == "night" and skip_presentation(): return
+ var phase: String = str(state.get("phase", "morning"))
+ if phase == "night" and skip_presentation(): return
  advance_phase()
+ # Skip the "day" planning phase: morning -> day -> night in one button press.
+ if phase == "morning" and str(state.get("phase", "")) == "day":
+  advance_phase()
 func skip_presentation() -> bool:
  if fx_playing:
   fx_t = 1.0
@@ -1214,12 +1199,16 @@ func _exit_tree() -> void:
    player.stop()
    player.stream = null
  sfx_cache = {}
-func play_sfx(key: String) -> void:
+func play_sfx(key: String, pitch: float = 0.0) -> void:
  # Headless checks have no speakers; skipping keeps their exit clean.
  if not is_instance_valid(sfx) or DisplayServer.get_name() == "headless": return
  if not sfx_cache.has(key): sfx_cache[key] = load_sfx(key)
  var entry: Array = SFX_FILES.get(key, ["", 0.0])
  sfx.volume_db = -4.0 + float(entry[1])
+ if pitch == 0.0 and sfx.pitch_scale != 1.0:
+  pass  # keep the pitch set by on_stage_enter
+ elif pitch != 0.0:
+  sfx.pitch_scale = pitch
  sfx.stream = sfx_cache[key]
  sfx.play()
 # Prefer the bundled CC0 file; fall back to the synthesized tone if it is missing.
