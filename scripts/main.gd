@@ -73,6 +73,8 @@ func _ready() -> void:
  theme.default_font_size = 18
  for key: String in ["solar","water","greenhouse","lab","habitat","mine","shield","crew","sun","storm","power","material","star","flag","survival","upgrade","undo","help","book"]:
   icons[key] = load("res://ui_assets/"+key+".svg")
+ if ResourceLoader.exists("res://ui_assets/logo.png"):
+  icons["logo"] = load("res://ui_assets/logo.png")
  for fkey: String in ["solar","water","greenhouse","lab","habitat","mine","shield"]:
   var jpg_path: String = "res://ui_assets/facilities/facility_" + fkey + ".jpg"
   var png_path: String = "res://ui_assets/facilities/facility_" + fkey + ".png"
@@ -718,7 +720,7 @@ func _draw() -> void:
   draw_line(Vector2(x+169,21),Vector2(x+169,55),LINE,1.5,true)
  if not saved: text_at(trk("save_failed"),1080,70,14,RUST)
  draw_line(Vector2(28,74),Vector2(1326,74),LINE,2,true)
- icon("habitat",Rect2(34,91,64,64))
+ icon("logo" if icons.has("logo") else "habitat",Rect2(34,91,64,64))
  text_at(trk("title"),113,145,41,RUST)
  text_at(trk("mission"),391,151,20)
  var phase_now: String=str(state.get("phase","morning"))
