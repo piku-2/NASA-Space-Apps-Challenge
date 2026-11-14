@@ -14,6 +14,7 @@ func _process(_delta: float) -> bool:
  frame+=1
  if frame==1:
   game.state=game.Sim.initial()
+  game.at_title=false
   game.set_language("ja")
   game.motion_frozen=true
   game.fx_t=1.0

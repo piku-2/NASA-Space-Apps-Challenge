@@ -8,6 +8,7 @@ func _process(_delta: float) -> bool:
  frame+=1
  if frame==1:
   game.state = game.Sim.initial()
+  game.at_title=false
   game.selected=4
   game.state = game.Sim.place(game.state, "mio", 4)
   game.state = game.Sim.place(game.state, "sora", 7)

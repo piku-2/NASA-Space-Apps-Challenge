@@ -10,6 +10,7 @@ func run_checks() -> void:
  game.state=game.Sim.initial()
  game.selected=1
  game.modal=""
+ game.at_title=false
  game.build_kind=""
  game.crew_source=-2
  game.refresh()

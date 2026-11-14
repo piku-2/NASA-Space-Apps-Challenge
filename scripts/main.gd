@@ -11,6 +11,8 @@ var words: Dictionary = {}
 var language: String = "ja"
 var selected: int = 1
 var modal: String = ""
+var at_title: bool = true
+var title_canvas: Control
 var build_kind: String = ""
 # -2: no crew selected; -1: standby; otherwise a source cell.
 var crew_source: int = -2
@@ -335,7 +337,7 @@ func refresh() -> void:
   var kind: String = str(Sim.CONFIG.facilities[i])
   var cost: int = int(Sim.R.shield_cost if kind=="shield" else Sim.R.build)
   var hint: String = facility_name(kind)+"\n"+trk(kind+"_desc")+"\n"+trk("build_cost",[cost])
-  icon_button(kind,Rect2(938+(i%4)*95,397+(i/4)*78,86,68),hint,func() -> void: choose_build(kind),build_kind==kind,not planning or int(state.material)<cost or (kind=="shield" and bool(state.shield)))
+  icon_button(kind,Rect2(938+(i%4)*95,390+(i/4)*80,86,52),hint,func() -> void: choose_build(kind),build_kind==kind,not planning or int(state.material)<cost or (kind=="shield" and bool(state.shield)))
  var phase: String = str(state.get("phase","morning"))
  # Shelter follows the morning being planned. Night has already moved day forward.
  if phase != "night" and Sim.event(state) == "flare":
@@ -356,6 +358,7 @@ func refresh() -> void:
  button(trk(action_key),Rect2(930,659,390,69),on_primary,true,bool(state.over))
  icon_button("book",Rect2(32,739,55,40),trk("sources"),func() -> void: open_modal("sources"))
  icon_button("undo",Rect2(99,739,55,40),trk("restart"),func() -> void: open_modal("restart"))
+ if at_title: add_title_controls()
  if modal != "": add_modal_controls()
  queue_redraw()
 func cell_rect(i: int) -> Rect2:
@@ -527,6 +530,32 @@ func add_modal_controls() -> void:
   button(trk("cancel"),Rect2(700,610,335,52),close_modal)
  else:
   button(trk("continue" if modal=="win" else "close"),Rect2(750,631,285,46),close_modal,true)
+func add_title_controls() -> void:
+ var shade: ColorRect = ColorRect.new()
+ shade.color = PAPER
+ shade.size = Vector2(1360,800)
+ ui.add_child(shade)
+ title_canvas = Control.new()
+ title_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ title_canvas.draw.connect(draw_title)
+ ui.add_child(title_canvas)
+ button(trk("language"),Rect2(1165,84,155,38),func() -> void:
+  set_language("en" if language == "ja" else "ja")
+  save_game()
+  refresh())
+ button(trk("start_game"),Rect2(505,536,350,64),func() -> void:
+  at_title = false
+  refresh(),true,false,26)
+func draw_title() -> void:
+ if not is_instance_valid(title_canvas): return
+ title_canvas.draw_texture_rect(icons["habitat"],Rect2(618,140,124,124),false)
+ title_text(trk("title"),356,64,RUST)
+ title_text(trk("subtitle"),404,20,MUTED)
+ title_text(trk("mission"),486,22,INK)
+ title_text(trk("footer"),762,13,MUTED)
+func title_text(text: String, y: float, size_px: int, color: Color) -> void:
+ var w: float = font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,size_px).x
+ title_canvas.draw_string(font,Vector2((1360-w)/2,y),text,HORIZONTAL_ALIGNMENT_LEFT,-1,size_px,color)
 func announce_assignment(id: String, cell: int, before: Dictionary = {}) -> void:
  if id == "" or cell < 0 or cell >= state.cells.size():
   refresh()
@@ -756,7 +785,7 @@ func _draw() -> void:
  text_at(trk("health")+" "+str(health_now)+"%",650,659,18,TEAL)
  draw_style_box(style(Color("e9ddc8"),Color.TRANSPARENT,0,5),Rect2(649,674,225,10))
  draw_style_box(style(TEAL,Color.TRANSPARENT,0,5),Rect2(649,674,225*clampf(float(health_now)/100,0,1),10))
- text_at(trk("goal",[shown_amount("science"),mini(int(state.day)-1,15)]),630,712,16,MUTED)
+ text_at(trk("goal",[shown_amount("science"),mini(Sim.shown_day(state),15)]),630,712,16,MUTED)
  var ev: String=Sim.shown_event(state)
  var flare_choice: bool = phase_now!="night" and ev=="flare"
  draw_style_box(style(Color.TRANSPARENT,LINE,2,16),Rect2(920,143,410,220 if flare_choice else 189))
@@ -778,6 +807,17 @@ func _draw() -> void:
   else: text_at(trk("archive"),942,320,12,MUTED,360)
  draw_style_box(style(Color.TRANSPARENT,LINE,2,16),Rect2(920,366 if flare_choice else 350,410,206 if flare_choice else 225))
  text_at(trk("build_title"),940,383,23)
+ for i: int in range(Sim.CONFIG.facilities.size()):
+  var bkind: String = str(Sim.CONFIG.facilities[i])
+  var bcost: int = int(Sim.R.shield_cost if bkind=="shield" else Sim.R.build)
+  var bx: float = 938+(i%4)*95
+  var by: float = 390+(i/4)*80
+  var bname: String = facility_name(bkind)
+  var name_w: float = font.get_string_size(bname,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
+  text_at(bname,bx+(86-name_w)/2,by+65,11,INK)
+  var cost_text: String = trk("material")+" "+str(bcost)
+  var cost_w: float = font.get_string_size(cost_text,HORIZONTAL_ALIGNMENT_LEFT,-1,11).x
+  text_at(cost_text,bx+(86-cost_w)/2,by+78,11,RUST if int(state.material)<bcost else MUTED)
  text_at(trk("build_hint"),940,571,16,TEAL)
  var cell: Dictionary=state.cells[selected]
  if cell.kind!="":
