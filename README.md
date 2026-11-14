@@ -37,7 +37,7 @@ npm run preview    # http://127.0.0.1:8000 でビルド結果を確認
 - `src/game/`: Phaser の基地ボードと、操作・表示の DOM
 - `data/values.json`: ゲームバランス
 - `i18n/`: 日本語・英語の文言
-- `ui_assets/`: SVG、施設画像、日本語フォント
+- `ui_assets/`: SVG と日本語フォント
 - `assets/sfx/`: 効果音（Kenney、CC0。[クレジット](assets/sfx/CREDITS.md)）
 
 フレア警報は NASA の2024年5月14日の X8.7 フレア観測を参考にしています。ライブ情報ではありません。資源量・生産量・消費量・体力はゲーム用の調整値です。

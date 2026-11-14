@@ -10,14 +10,7 @@ import powerIcon from '../../ui_assets/power.svg'
 import materialIcon from '../../ui_assets/material.svg'
 import survivalIcon from '../../ui_assets/survival.svg'
 import starIcon from '../../ui_assets/star.svg'
-import sunIcon from '../../ui_assets/sun.svg'
-import stormIcon from '../../ui_assets/storm.svg'
-import helpIcon from '../../ui_assets/help.svg'
-import bookIcon from '../../ui_assets/book.svg'
-import undoIcon from '../../ui_assets/undo.svg'
-import upgradeIcon from '../../ui_assets/upgrade.svg'
 import crewIcon from '../../ui_assets/crew.svg'
-import flagIcon from '../../ui_assets/flag.svg'
 import placeSfx from '../../assets/sfx/place.ogg'
 import expertSfx from '../../assets/sfx/expert.ogg'
 import alarmSfx from '../../assets/sfx/flare_alert.ogg'
@@ -36,14 +29,7 @@ export const ICONS: Record<string, string> = {
   material: materialIcon,
   survival: survivalIcon,
   star: starIcon,
-  sun: sunIcon,
-  storm: stormIcon,
-  help: helpIcon,
-  book: bookIcon,
-  undo: undoIcon,
-  upgrade: upgradeIcon,
   crew: crewIcon,
-  flag: flagIcon,
 }
 
 const SFX = { place: placeSfx, expert: expertSfx, alarm: alarmSfx }
