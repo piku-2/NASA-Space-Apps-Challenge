@@ -90,15 +90,6 @@ button:disabled,
   line-height: 1;
 }
 
-.phase-label {
-  position: absolute;
-  left: 36px;
-  top: 158px;
-  color: var(--rust);
-  font-size: 18px;
-  line-height: 1;
-}
-
 .logo {
   position: absolute;
   left: 34px;
@@ -542,7 +533,6 @@ button.primary.advance { font-size: 28px; }
   .res i, .rule, .logo { display: none; }
   .sheet-header .title-name { font-size: 22px; flex: 1 0 auto; min-width: 6.5em; white-space: nowrap; }
   .sheet-header .save-failed { flex: 1 0 100%; width: 100%; }
-  .sheet-header .phase-label { font-size: 18px; }
   .sheet-header .lang { width: 76px; min-height: 44px; }
   .sheet-header .help-btn { width: 64px; min-height: 44px; }
   .sheet-crew { order: 3; }

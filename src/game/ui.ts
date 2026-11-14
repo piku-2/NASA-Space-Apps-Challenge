@@ -293,7 +293,6 @@ function headerHtml(session: Session, tr: Tr): string {
     <div class="rule"></div>
     <img class="logo" src="${LOGO}" alt="">
     <h1 class="title-name">${esc(tr('title'))}</h1>
-    <div class="phase-label" tabindex="0" ${tipAttr(tr('phase_' + state.phase))}>${esc(tr('phase_short_' + state.phase))}</div>
     ${session.streak >= 2 ? `<span class="streak" tabindex="0" ${tipAttr(tr('streak_badge', [session.streak]))}>${session.streak}</span>` : ''}
     <button type="button" class="icon-btn help-btn" data-act="help" ${tipAttr(tr('help'))}>${esc(tr('btn_help'))}</button>
     <button type="button" class="lang" data-act="lang">${esc(tr('language'))}</button>
