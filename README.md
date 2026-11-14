@@ -8,7 +8,7 @@ NASA Space Apps Challenge の Junior Astronaut Mission Trainer に向けた、Go
 
 ## 起動
 
-Godot **4.6.3** で `project.godot` を開き、F5（プロジェクト実行）で起動します。
+Godot **4.7.2** で `project.godot` を開き、F5（プロジェクト実行）で起動します。
 
 ```sh
 make run
@@ -29,7 +29,7 @@ make export-web  # dist/index.html に Web 版を書き出す
 make serve       # http://localhost:8000 で確認
 ```
 
-Web 書き出しには Godot 4.6.3 の export templates が必要です。エディターの「エディター → エクスポートテンプレートの管理」から用意してください。`make test` は専用のデータ保存先を使い、通常プレイのセーブを保護します。
+Web 書き出しには Godot 4.7.2 の export templates が必要です。エディターの「エディター → エクスポートテンプレートの管理」から用意してください。`make test` は専用のデータ保存先を使い、通常プレイのセーブを保護します。
 
 `main` への push 時には既存の GitHub Actions が Web 版を GitHub Pages に公開します。公開先リポジトリでは Pages のソースを GitHub Actions に設定してください。
 
@@ -39,6 +39,7 @@ Web 書き出しには Godot 4.6.3 の export templates が必要です。エデ
 - `data/values.json`: ゲームバランス
 - `i18n/`: 日本語・英語の文言
 - `scenes/`, `ui_assets/`: 起動シーン、SVG、日本語フォント
+- `assets/sfx/`: 効果音（Kenney、CC0。[クレジット](assets/sfx/CREDITS.md)）
 - `test/`: 動作チェックとキャプチャ用スクリプト
 - `docs/API.md`: チャレンジの背景と参考資料
 

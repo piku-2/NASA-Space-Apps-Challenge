@@ -30,6 +30,40 @@ var quip_badge: Dictionary = {}
 var keep_preview: Dictionary = {}
 var cover_preview: Dictionary = {}
 var sound: AudioStreamPlayer
+# Juice layer. Everything below is presentation only and never touches the rules.
+var sfx: AudioStreamPlayer
+var sfx_cache: Dictionary = {}
+var floaters: Array = []
+var sparks: Array = []
+var hop: Dictionary = {}
+var forecast_roll: Dictionary = {}
+var banner_t: float = 1.0
+var banner_ids: Array = []
+var streak: int = 0
+var streak_chip_t: float = 1.0
+var flare_alert_t: float = 1.0
+const STAGE_SECONDS: float = 0.5
+const BANNER_SECONDS: float = 2.8
+const STREAK_CHIP_SECONDS: float = 2.2
+const FLARE_ALERT_SECONDS: float = 2.4
+const GOLD: Color = Color("c9892a")
+# Kenney CC0 sounds (see assets/sfx/CREDITS.md). [path, volume offset dB]
+const SFX_FILES: Dictionary = {
+ "place": ["res://assets/sfx/place.ogg", 0.0],
+ "expert": ["res://assets/sfx/expert.ogg", -2.0],
+ "power": ["res://assets/sfx/reveal_power.ogg", 0.0],
+ "material": ["res://assets/sfx/reveal_material.ogg", -7.0],
+ "survival": ["res://assets/sfx/reveal_survival.ogg", 0.0],
+ "science": ["res://assets/sfx/reveal_science.ogg", 0.0],
+ "heal": ["res://assets/sfx/reveal_heal.ogg", -6.0],
+ "damage": ["res://assets/sfx/reveal_damage.ogg", -3.0],
+ "protect": ["res://assets/sfx/protect.ogg", -5.0],
+ "page": ["res://assets/sfx/reveal_discovery.ogg", 8.0],
+ "discovery": ["res://assets/sfx/milestone.ogg", -2.0],
+ "streak": ["res://assets/sfx/streak.ogg", -2.0],
+ "alarm": ["res://assets/sfx/flare_alert.ogg", -3.0]
+}
+var fx_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 const SAVE_PATH: String = "user://mars_notebook_v1.json"
 func _ready() -> void:
  theme = Theme.new()
@@ -47,6 +81,9 @@ func _ready() -> void:
  set_language(language)
  sound = AudioStreamPlayer.new()
  add_child(sound)
+ sfx = AudioStreamPlayer.new()
+ sfx.volume_db = -4.0
+ add_child(sfx)
  message = phase_message()
  refresh()
 func trk(key: String, args: Array = []) -> String:
@@ -60,7 +97,7 @@ func set_language(lang: String) -> void:
 func save_game() -> void:
  var f: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
  saved = f != null
- if f != null: f.store_string(JSON.stringify({"version":3,"language":language,"state":state}))
+ if f != null: f.store_string(JSON.stringify({"version":3,"language":language,"state":state,"streak":streak}))
 func load_game() -> void:
  if not FileAccess.file_exists(SAVE_PATH): return
  var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
@@ -72,6 +109,8 @@ func load_game() -> void:
  state = restored
  language = str(data.get("language","ja"))
  if not language in ["ja","en"]: language = "ja"
+ streak = maxi(0, int(data.get("streak", 0)))
+ reset_feedback()
  # A loaded night is already settled. Do not replay the reveal.
  fx_t = 1.0
  fx_playing = false
@@ -210,12 +249,16 @@ func return_selected() -> void:
  if not Sim.can_plan(state):
   note("plan_locked")
   return
+ var from_cell: int = Sim.crew_cell(state, selected_crew)
+ var before: Dictionary = state
  state = Sim.move(state, selected_crew, -1)
  selected_crew = ""
  crew_source = -2
  save_game()
+ show_plan_change(before, from_cell)
  note("removed")
 func click_sound() -> void:
+ if DisplayServer.get_name() == "headless": return
  var wav: AudioStreamWAV = AudioStreamWAV.new()
  wav.format = AudioStreamWAV.FORMAT_16_BITS
  wav.mix_rate = 22050
@@ -310,7 +353,7 @@ func refresh() -> void:
  var action_key: String = "start_day"
  if phase == "day": action_key = "see_results"
  elif phase == "night": action_key = "next_morning"
- button(trk(action_key),Rect2(930,659,390,69),advance_phase,true,bool(state.over))
+ button(trk(action_key),Rect2(930,659,390,69),on_primary,true,bool(state.over))
  icon_button("book",Rect2(32,739,55,40),trk("sources"),func() -> void: open_modal("sources"))
  icon_button("undo",Rect2(99,739,55,40),trk("restart"),func() -> void: open_modal("restart"))
  if modal != "": add_modal_controls()
@@ -337,11 +380,12 @@ func select_cell(i: int) -> void:
   var moved: Dictionary = Sim.move(state, selected_crew, i)
   if Sim.crew_cell(moved, selected_crew) != i: refresh(); return
   var who: String = selected_crew
+  var before: Dictionary = state
   state = moved
   selected_crew = ""
   crew_source = -2
   save_game()
-  announce_assignment(who, i)
+  announce_assignment(who, i, before)
   return
  if cell.kind == "" and build_kind != "":
   build(build_kind)
@@ -358,15 +402,18 @@ func assign(amount: int) -> void:
   var id: String = Sim.first_idle(state)
   if id == "": note("no_crew"); return
   if int(c.crew) >= int(Sim.R.capacity): note("full"); return
+  var before_add: Dictionary = state
   state = Sim.move(state, id, selected)
   save_game()
-  announce_assignment(id, selected)
+  announce_assignment(id, selected, before_add)
   return
  var rid: String = Sim.last_in_cell(state, selected)
  if rid == "": return
+ var before_remove: Dictionary = state
  state = Sim.move(state, rid, -1)
  save_game()
  quip_badge = {}
+ show_plan_change(before_remove, selected)
  note("removed")
 func upgrade() -> void:
  if bool(state.over): return
@@ -374,8 +421,10 @@ func upgrade() -> void:
  if state.cells[selected].kind in ["","shield"] or int(state.cells[selected].level)>=int(Sim.R.max_level): return
  var cost: int = int(Sim.R.upgrade)*int(state.cells[selected].level)
  if int(state.material)<cost: note("need_material"); return
+ var before: Dictionary = state
  state = Sim.upgrade_at(state, selected)
  save_game()
+ show_plan_change(before, selected)
  note("upgraded")
 func build(kind: String) -> void:
  if bool(state.over): return
@@ -416,13 +465,18 @@ func advance_phase() -> void:
   if str(state.get("phase","")) == "night":
    fx_t = 0.0
    fx_playing = true
+   update_streak()
   if bool(state.over): modal = "loss"
   elif bool(state.won) and not was_won: modal = "win"
  elif phase == "night":
   state = Sim.wake(state)
   fx_playing = false
   fx_t = 1.0
+  reset_feedback()
   message = trk("daily",[int(state.day)])
+  if Sim.event(state) == "flare":
+   flare_alert_t = 0.0
+   play_sfx("alarm")
  save_game()
  refresh()
 func finish_day() -> void:
@@ -446,6 +500,8 @@ func restart() -> void:
  quip_badge = {}
  fx_t = 1.0
  fx_playing = false
+ streak = 0
+ reset_feedback()
  save_game()
  refresh()
 func add_modal_controls() -> void:
@@ -471,7 +527,7 @@ func add_modal_controls() -> void:
   button(trk("cancel"),Rect2(700,610,335,52),close_modal)
  else:
   button(trk("continue" if modal=="win" else "close"),Rect2(750,631,285,46),close_modal,true)
-func announce_assignment(id: String, cell: int) -> void:
+func announce_assignment(id: String, cell: int, before: Dictionary = {}) -> void:
  if id == "" or cell < 0 or cell >= state.cells.size():
   refresh()
   return
@@ -479,6 +535,10 @@ func announce_assignment(id: String, cell: int) -> void:
  var matched: bool = Sim.specialty_matches(id, kind)
  var bonus: int = Sim.expert_bonus(kind) if matched else 0
  quip_badge = {"cell": cell, "matched": matched, "bonus": bonus, "id": id}
+ if not before.is_empty(): show_plan_change(before, cell)
+ hop[id] = 0.0
+ if matched: celebrate_expert(id, cell, bonus)
+ else: play_sfx("place")
  if matched: message = trk("quip_"+id)+"  "+trk("bonus_words",[bonus])
  else: message = trk("quip_other",[trk("crew_"+id), facility_name(kind)])
  refresh()
@@ -540,13 +600,21 @@ func shown_amount(key: String) -> int:
  if str(state.get("phase","")) != "night": return settled
  var report: Dictionary = state.report if state.get("report") is Dictionary else {}
  if not report.has(key): return settled
- var fade: float = smoothstep(0.0, 1.0, clampf(fx_t, 0.0, 1.0))
+ var fade: float = stage_progress(key)
  return int(round(lerpf(float(settled-int(report[key])), float(settled), fade)))
 # Visual only. This never calls calculate, resolve, or save.
 func presentation_step(delta: float) -> void:
  if motion_frozen or not fx_playing: return
- fx_t = minf(1.0, fx_t+delta/1.4)
- if fx_t >= 1.0: fx_playing = false
+ var stages: Array = reveal_stages()
+ var before_stage: int = int(fx_t*stages.size()) if fx_t > 0.0 else -1
+ fx_t = minf(1.0, fx_t+delta/reveal_seconds())
+ var now_stage: int = mini(int(fx_t*stages.size()), stages.size()-1)
+ # Each step enters its own row once, even when a long frame skips ahead.
+ for i: int in range(maxi(before_stage+1, 0), now_stage+1):
+  on_stage_enter(str(stages[i]))
+ if fx_t >= 1.0:
+  fx_playing = false
+  finish_reveal()
  queue_redraw()
 func pose_feedback(anim: float, motion: float) -> void:
  motion_frozen = true
@@ -556,6 +624,7 @@ func pose_feedback(anim: float, motion: float) -> void:
  queue_redraw()
 func _process(delta: float) -> void:
  presentation_step(delta)
+ feedback_step(delta)
 func text_at(text: String, x: float, y: float, size_px: int = 24, color: Color = INK, width: float = -1) -> void:
  draw_string(font,Vector2(x,y),text,HORIZONTAL_ALIGNMENT_LEFT,width,size_px,color)
 func wrap_lines(text: String, width: float, size_px: int) -> PackedStringArray:
@@ -584,7 +653,8 @@ func crew_color(id: String) -> Color:
   "lab": return Color("5d6eae")
   "mine": return Color("8a5a3a")
   _: return MUTED
-func draw_person(pos: Vector2, radius: float, id: String) -> void:
+func draw_person(base: Vector2, radius: float, id: String) -> void:
+ var pos: Vector2 = base - Vector2(0, hop_offset(id))
  coin(pos, radius)
  draw_circle(pos+Vector2(radius*0.55, -radius*0.55), maxf(4.0, radius*0.22), crew_color(id))
  if selected_crew == id: draw_arc(pos, radius+3, 0, TAU, 40, TEAL, 3, true)
@@ -729,16 +799,36 @@ func _draw() -> void:
   var k: String=keys[i]
   var delta: int=int(report.get(k,0)) if phase_now=="night" else int(predicted[k])-int(state[k])
   var x: float=940+i*94
+  var col_fade: float = fade
+  var col_rise: float = rise
+  var flash: float = 0.0
+  var shown: int = delta
+  if phase_now=="night":
+   # Night columns wait for their own turn, then count up.
+   var p: float = stage_progress(k)
+   col_fade = 0.25+0.75*p
+   col_rise = (1.0-p)*8.0
+   shown = int(round(float(delta)*p))
+  else:
+   shown = rolled(k, delta)
+   flash = float(forecast_roll[k].flash)
   var delta_color: Color = (TEAL if delta>=0 else RUST)
-  delta_color.a = fade
-  icon(k if k!="science" else "star",Rect2(x,619-rise,27,27), Color(1,1,1,fade))
-  text_at(("+" if delta>=0 else "")+str(delta),x+33,642-rise,23,delta_color)
- text_at(trk("unlock_shield_line",[unlock_label("shielding")]),624,732,12,MUTED,130)
- text_at(trk("unlock_crops_line",[unlock_label("crops")]),624,750,12,MUTED,130)
+  if phase_now=="night" and delta>0 and streak>=2: delta_color = GOLD
+  delta_color.a = col_fade
+  if flash > 0.0: draw_style_box(style(Color(delta_color, 0.18*flash), Color.TRANSPARENT, 0, 8), Rect2(x-3, 615, 90, 34))
+  icon(k if k!="science" else "star",Rect2(x,619-col_rise,27,27), Color(1,1,1,col_fade))
+  text_at(("+" if shown>=0 else "")+str(shown),x+33,642-col_rise,23+int(round(4.0*flash)),delta_color)
+ var shield_on: bool = int(state.science) >= int(Sim.R.unlock_shield_at)
+ var crops_on: bool = int(state.science) >= int(Sim.R.unlock_plant_at)
+ text_at(trk("unlock_shield_line",[unlock_label("shielding")]),624,732,12,TEAL if shield_on else MUTED,130)
+ text_at(trk("unlock_crops_line",[unlock_label("crops")]),624,750,12,TEAL if crops_on else MUTED,130)
+ if shield_on: icon("star",Rect2(606,721,14,14))
+ if crops_on: icon("star",Rect2(606,739,14,14))
  if phase_now=="night": draw_night_summary(fade)
  elif bool(predicted.shortage): text_at("! "+trk("shortage"),940,746,14,RUST,380)
  elif bool(predicted.over): text_at("! "+trk("loss_title"),940,746,14,RUST,380)
  if phase_now!="night": text_at(message,32,794,14,RUST,880)
+ draw_feedback_layer()
 func draw_base() -> void:
  draw_rect(Rect2(32, 180, 864, 438), Color("e39b78"))
 func draw_facility_mark(kind: String, rect: Rect2, staff: int) -> void:
@@ -781,7 +871,7 @@ func draw_harvest_pulse(index: int, rect: Rect2) -> void:
  if str(state.get("phase", "")) != "night" or not state.get("report") is Dictionary: return
  var cells: Variant = state.report.get("harvest_cells", [])
  if not cells is Array or not index in cells: return
- var hump: float = sin(clampf(fx_t, 0.0, 1.0) * PI)
+ var hump: float = sin(stage_progress("survival") * PI)
  if hump <= 0.02: return
  var center: Vector2 = rect.position + Vector2(72, 58)
  draw_arc(center, 20.0 + hump * 18.0, 0, TAU, 28, Color(TEAL, 0.2 + hump * 0.55), 3, true)
@@ -790,12 +880,20 @@ func draw_harvest_pulse(index: int, rect: Rect2) -> void:
 func draw_night_tint() -> void:
  if str(state.get("phase", "")) != "night" or fx_t <= 0.0 or fx_t >= 1.0: return
  if Sim.shown_event(state) != "flare": return
- var hump: float = sin(clampf(fx_t, 0.0, 1.0) * PI)
+ var hump: float = sin(stage_progress("health") * PI)
  var report: Dictionary = state.report if state.get("report") is Dictionary else {}
  var protected: bool = bool(report.get("sheltered", false)) or bool(state.get("shield", false)) or bool(report.get("cover_committed", false))
  var tint: Color = Color(0.24, 0.45, 0.42, 0.10 * hump) if protected else Color(0.72, 0.28, 0.16, 0.12 * hump)
  draw_rect(Rect2(32, 180, 864, 438), tint)
- if protected: draw_arc(Vector2(464, 390), 78, PI, TAU, 32, Color(TEAL, 0.45 * hump), 3, true)
+ if protected:
+  draw_arc(Vector2(464, 390), 78, PI, TAU, 32, Color(TEAL, 0.45 * hump), 3, true)
+  # Shield and habitat cells glow while the crew sighs with relief.
+  for i: int in range(state.cells.size()):
+   var kind: String = str(state.cells[i].kind)
+   if kind == "shield" or (kind == "habitat" and bool(report.get("sheltered", false))):
+    var c: Vector2 = cell_rect(i).get_center()
+    draw_arc(c, 40.0 + hump * 14.0, 0, TAU, 32, Color(TEAL, 0.55 * hump), 4, true)
+    draw_circle(c, 36.0, Color(TEAL, 0.10 * hump))
 func draw_flare_choice() -> void:
  var lines: Dictionary = flare_choice_lines()
  if bool(state.get("shelter", false)):
@@ -820,31 +918,32 @@ func draw_night_summary(fade: float) -> void:
  var report: Dictionary = state.report if state.get("report") is Dictionary else {}
  var rows: Array = []
  if bool(report.get("cover_committed", false)):
-  rows.append(["shield", trk("night_cover", [int(report.get("cover_power", 0)), int(report.get("damage", 0))])])
+  rows.append(["shield", trk("night_cover", [int(report.get("cover_power", 0)), int(report.get("damage", 0))]), "health"])
  elif bool(report.get("sheltered", false)) and str(report.get("event", "")) == "flare":
-  rows.append(["habitat", trk("night_shelter")])
+  rows.append(["habitat", trk("night_shelter"), "health"])
  elif int(report.get("damage", 0)) > 0:
-  rows.append(["storm" if str(report.get("event", "")) == "flare" else "shield", trk("night_keep_hit" if str(report.get("event", "")) == "flare" else "outcome_damage", [int(report.damage)])])
+  rows.append(["storm" if str(report.get("event", "")) == "flare" else "shield", trk("night_keep_hit" if str(report.get("event", "")) == "flare" else "outcome_damage", [int(report.damage)]), "health"])
  elif int(report.get("healed", 0)) > 0:
-  rows.append(["habitat", trk("outcome_heal", [int(report.healed)])])
+  rows.append(["habitat", trk("outcome_heal", [int(report.healed)]), "health"])
  if int(report.get("harvest", 0)) > 0:
-  rows.append(["greenhouse", trk("outcome_harvest", [int(report.harvest)])])
+  rows.append(["greenhouse", trk("outcome_harvest", [int(report.harvest)]), "survival"])
  var fresh: Variant = report.get("new_discoveries", [])
  if fresh is Array:
   for id: Variant in fresh:
-   rows.append(["star", trk("discovered", [trk("unlock_"+str(id)+"_name")])])
+   rows.append(["star", trk("discovered", [trk("unlock_"+str(id)+"_name")]), "discovery"])
  if rows.size() < 3 and int(report.get("produced_science", 0)) > 0:
-  rows.append(["star", trk("outcome_science", [int(report.produced_science)])])
+  rows.append(["star", trk("outcome_science", [int(report.produced_science)]), "science"])
  if rows.size() < 3 and int(report.get("produced_material", 0)) > 0:
-  rows.append(["material", trk("outcome_material", [int(report.produced_material)])])
+  rows.append(["material", trk("outcome_material", [int(report.produced_material)]), "material"])
  if rows.size() < 3 and bool(state.get("shortage", false)):
-  rows.append(["power", trk("shortage")])
- if rows.is_empty(): rows.append(["book", trk("outcome_none")])
- var ink: Color = Color(RUST, fade)
+  rows.append(["power", trk("shortage"), "power"])
+ if rows.is_empty(): rows.append(["book", trk("outcome_none"), "none"])
  for i: int in range(mini(rows.size(), 3)):
   var row: Array = rows[i]
-  icon(str(row[0]), Rect2(936, 734 + i * 18, 16, 16), Color(1, 1, 1, fade))
-  text_at(str(row[1]), 958, 748 + i * 18, 14, ink, 360)
+  # Each line arrives with its own step of the reveal instead of all at once.
+  var row_fade: float = minf(fade, stage_progress(str(row[2])))
+  icon(str(row[0]), Rect2(936, 734 + i * 18, 16, 16), Color(1, 1, 1, row_fade))
+  text_at(str(row[1]), 958, 748 + i * 18, 14, Color(RUST, row_fade), 360)
 func draw_modal() -> void:
  # This signal belongs to the top canvas, so draw using that canvas.
  var canvas: Control=ui.get_child(ui.get_child_count()-1) as Control
@@ -857,3 +956,428 @@ func draw_modal() -> void:
  var lines: PackedStringArray=trk(body_key).split("\n")
  for i: int in range(lines.size()):
   canvas.draw_string(font,Vector2(315,211+i*26),lines[i],HORIZONTAL_ALIGNMENT_LEFT,730,19,INK)
+# ---------------------------------------------------------------------------
+# Tempo and feedback layer (presentation only).
+# Numbers come from Sim.calculate / Sim.forecast_change or the saved night report,
+# so nothing here can drift from the rules.
+# ---------------------------------------------------------------------------
+func reset_feedback() -> void:
+ floaters = []
+ sparks = []
+ hop = {}
+ forecast_roll = {}
+ banner_t = 1.0
+ banner_ids = []
+ streak_chip_t = 1.0
+ flare_alert_t = 1.0
+func night_report() -> Dictionary:
+ if str(state.get("phase","")) != "night": return {}
+ return state.report if state.get("report") is Dictionary else {}
+func update_streak() -> void:
+ var report: Dictionary = night_report()
+ if int(report.get("survival", 0)) > 0 and not bool(state.get("over", false)): streak += 1
+ else: streak = 0
+func streak_tier() -> int:
+ if streak >= 5: return 2
+ if streak >= 2: return 1
+ return 0
+func is_streak_milestone(n: int) -> bool:
+ return n == 3 or n == 5 or (n > 5 and n % 5 == 0)
+func night_protected(report: Dictionary) -> bool:
+ return bool(report.get("sheltered", false)) or bool(state.get("shield", false)) or bool(report.get("cover_committed", false))
+func gain_color(v: int) -> Color:
+ if v < 0: return RUST
+ return GOLD if streak_tier() > 0 else TEAL
+# --- Morning: instant placement feedback ---
+func show_plan_change(before: Dictionary, cell: int) -> void:
+ if before.is_empty() or cell < 0 or cell >= state.cells.size(): return
+ var change: Dictionary = Sim.forecast_change(before, state)
+ var origin: Vector2 = cell_rect(cell).position + Vector2(72, 52)
+ var row: int = 0
+ for k: String in ["survival","power","material","science","health"]:
+  var v: int = int(change[k])
+  if v == 0: continue
+  var key_icon: String = str({"science":"star","health":"habitat"}.get(k, k))
+  spawn_float(signed(v), origin - Vector2(0, row*24), TEAL if v > 0 else RUST, key_icon, 18, 1.2, row*0.07)
+  row += 1
+ var c: Dictionary = state.cells[cell]
+ if str(c.kind) == "greenhouse" and int(change.harvest) == 0 and int(c.crew) > 0 and int(before.cells[cell].crew) == 0:
+  var left: int = int(Sim.R.plant_days) - (int(c.get("progress", 0)) + 1)
+  if left > 0:
+   spawn_float(trk("float_grow", [left]), origin - Vector2(0, row*24), TEAL, "greenhouse", 14, 1.4, row*0.07)
+   row += 1
+ if bool(change.shortage):
+  spawn_float(trk("float_shortage"), origin - Vector2(0, row*24), RUST, "power", 14, 1.5, row*0.07)
+func celebrate_expert(id: String, cell: int, bonus: int) -> void:
+ var center: Vector2 = cell_rect(cell).get_center()
+ spawn_float(trk("expert_pop", [bonus]), center + Vector2(0, -60), TEAL, "star", 17, 1.6, 0.0, true)
+ spawn_sparks(center, 14, crew_color(id), 150.0)
+ play_sfx("expert")
+func spawn_float(text: String, pos: Vector2, color: Color, icon_key: String = "", size_px: int = 18, life: float = 1.2, delay: float = 0.0, pop: bool = false) -> void:
+ floaters.append({"text":text, "pos":pos, "color":color, "icon":icon_key, "size":size_px, "age":-delay, "life":life, "pop":pop})
+ if floaters.size() > 24: floaters.pop_front()
+ queue_redraw()
+func spawn_sparks(pos: Vector2, count: int, color: Color, speed: float) -> void:
+ for _i: int in range(count):
+  var ang: float = fx_rng.randf_range(-PI, 0.0) if fx_rng.randf() < 0.8 else fx_rng.randf_range(0.0, PI)
+  var vel: Vector2 = Vector2(cos(ang), sin(ang)) * fx_rng.randf_range(speed*0.4, speed)
+  sparks.append({"pos":pos, "vel":vel, "age":0.0, "life":fx_rng.randf_range(0.5, 0.9), "color":color, "size":fx_rng.randf_range(2.5, 5.0), "star":fx_rng.randf() < 0.5})
+ while sparks.size() > 160: sparks.pop_front()
+ queue_redraw()
+func hop_offset(id: String) -> float:
+ var off: float = 0.0
+ if hop.has(id):
+  var a: float = float(hop[id])
+  if a >= 0.0 and a <= 0.45: off = sin(a / 0.45 * PI) * 9.0
+ if banner_t >= 0.0 and banner_t < 1.0:
+  var idx: int = 0
+  for i: int in range(Sim.CONFIG.crew.size()):
+   if str(Sim.CONFIG.crew[i].id) == id: idx = i
+  off = maxf(off, absf(sin(tick * 9.0 + float(idx))) * 6.0 * banner_alpha())
+ return off
+# Forecast numbers roll toward the new value and flash once whenever the plan changes.
+func rolled(key: String, target: int) -> int:
+ if motion_frozen or not forecast_roll.has(key):
+  forecast_roll[key] = {"shown": float(target), "target": target, "flash": 0.0}
+  return target
+ var e: Dictionary = forecast_roll[key]
+ if int(e.target) != target:
+  e["target"] = target
+  e["flash"] = 1.0
+ return int(round(float(e.shown)))
+func feedback_step(delta: float) -> void:
+ if motion_frozen: return
+ tick += delta
+ var busy: bool = false
+ for f: Dictionary in floaters: f["age"] = float(f.age) + delta
+ floaters = floaters.filter(func(f: Dictionary) -> bool: return float(f.age) < float(f.life))
+ busy = busy or not floaters.is_empty()
+ for sp: Dictionary in sparks:
+  sp["age"] = float(sp.age) + delta
+  sp["vel"] = Vector2(sp.vel) * (1.0 - 2.2 * delta) + Vector2(0, 160.0 * delta)
+  sp["pos"] = Vector2(sp.pos) + Vector2(sp.vel) * delta
+ sparks = sparks.filter(func(sp: Dictionary) -> bool: return float(sp.age) < float(sp.life))
+ busy = busy or not sparks.is_empty()
+ for id: Variant in hop.keys():
+  hop[id] = float(hop[id]) + delta
+  if float(hop[id]) > 0.5: hop.erase(id)
+  else: busy = true
+ for k: Variant in forecast_roll.keys():
+  var e: Dictionary = forecast_roll[k]
+  var gap: float = float(e.target) - float(e.shown)
+  if absf(gap) > 0.01:
+   e["shown"] = float(e.target) if absf(gap) < 0.05 else float(e.shown) + gap * (1.0 - exp(-delta * 12.0))
+   busy = true
+  if float(e.flash) > 0.0:
+   e["flash"] = maxf(0.0, float(e.flash) - delta * 1.6)
+   busy = true
+ if banner_t < 1.0:
+  banner_t = minf(1.0, banner_t + delta / BANNER_SECONDS)
+  busy = true
+ if streak_chip_t < 1.0:
+  var was: float = streak_chip_t
+  streak_chip_t = minf(1.0, streak_chip_t + delta / STREAK_CHIP_SECONDS)
+  if was < 0.0 and streak_chip_t >= 0.0: cheer_streak()
+  busy = true
+ if flare_alert_t < 1.0:
+  flare_alert_t = minf(1.0, flare_alert_t + delta / FLARE_ALERT_SECONDS)
+  busy = true
+ if busy: queue_redraw()
+# --- Night: one result at a time ---
+func reveal_stages() -> Array:
+ var report: Dictionary = night_report()
+ var out: Array = []
+ if report.is_empty(): return ["none"]
+ if int(report.get("power", 0)) != 0: out.append("power")
+ if int(report.get("material", 0)) != 0: out.append("material")
+ if int(report.get("survival", 0)) != 0 or int(report.get("harvest", 0)) > 0: out.append("survival")
+ if int(report.get("produced_science", 0)) > 0 or int(report.get("research_paused", 0)) > 0: out.append("science")
+ if str(report.get("event", "")) == "flare" or int(report.get("damage", 0)) > 0 or int(report.get("healed", 0)) > 0: out.append("health")
+ var fresh: Variant = report.get("new_discoveries", [])
+ if fresh is Array and not fresh.is_empty(): out.append("discovery")
+ if out.is_empty(): out.append("none")
+ return out
+func reveal_seconds() -> float:
+ return clampf(STAGE_SECONDS * float(reveal_stages().size()), 1.4, 3.0)
+func stage_progress(stage: String) -> float:
+ if str(state.get("phase", "")) != "night": return 1.0
+ var stages: Array = reveal_stages()
+ var i: int = stages.find(stage)
+ if i < 0: return smoothstep(0.0, 1.0, clampf(fx_t, 0.0, 1.0))
+ return smoothstep(0.0, 1.0, clampf(fx_t * float(stages.size()) - float(i), 0.0, 1.0))
+func on_stage_enter(stage: String) -> void:
+ var report: Dictionary = night_report()
+ var tier: int = streak_tier()
+ var bar: Array = ["survival","power","material","science"]
+ if stage in bar:
+  var anchor: Vector2 = Vector2(265 + bar.find(stage) * 245 + 60, 46)
+  var v: int = int(report.get(stage, 0))
+  play_sfx(stage)
+  if v != 0: spawn_float(signed(v), anchor + Vector2(0, 34), gain_color(v), "", 18, 1.0)
+  spawn_sparks(anchor, 5 + tier * 5, gain_color(v), 90.0 + tier * 30.0)
+  return
+ match stage:
+  "health":
+   if str(report.get("event", "")) == "flare" and night_protected(report):
+    play_sfx("protect")
+    var ids: Array = []
+    for d: Dictionary in Sim.CONFIG.crew: ids.append(str(d.id))
+    for i: int in range(ids.size()): hop[ids[i]] = -0.07 * float(i)
+    spawn_sparks(Vector2(464, 395), 12 + tier * 4, TEAL, 140.0)
+   elif int(report.get("damage", 0)) > 0: play_sfx("damage")
+   else: play_sfx("heal")
+  "discovery":
+   play_sfx("page")
+   spawn_sparks(Vector2(464, 395), 10 + tier * 4, GOLD, 120.0)
+func finish_reveal() -> void:
+ var fresh: Variant = night_report().get("new_discoveries", [])
+ banner_ids = fresh.duplicate() if fresh is Array else []
+ if not banner_ids.is_empty():
+  banner_t = 0.0
+  play_sfx("discovery")
+  spawn_sparks(Vector2(464, 395), 26, GOLD, 220.0)
+ if is_streak_milestone(streak):
+  if banner_ids.is_empty():
+   streak_chip_t = 0.0
+   cheer_streak()
+  else: streak_chip_t = -BANNER_SECONDS / STREAK_CHIP_SECONDS
+func cheer_streak() -> void:
+ play_sfx("streak")
+ spawn_sparks(Vector2(464, 218), 10 + streak_tier() * 6, GOLD, 130.0)
+# The big button first finishes the show, then closes the banner, then moves on.
+func on_primary() -> void:
+ if str(state.get("phase", "")) == "night" and skip_presentation(): return
+ advance_phase()
+func skip_presentation() -> bool:
+ if fx_playing:
+  fx_t = 1.0
+  fx_playing = false
+  finish_reveal()
+  queue_redraw()
+  return true
+ if (banner_t >= 0.0 and banner_t < 1.0) or streak_chip_t < 1.0:
+  banner_t = 1.0
+  streak_chip_t = 1.0
+  queue_redraw()
+  return true
+ return false
+func banner_alpha() -> float:
+ if banner_t < 0.0 or banner_t >= 1.0: return 0.0
+ return smoothstep(0.0, 0.1, banner_t) * (1.0 - smoothstep(0.85, 1.0, banner_t))
+# --- Short synthesized sounds (no new audio files) ---
+# Stop short sounds on exit so headless test runs do not report leaked playbacks.
+func _exit_tree() -> void:
+ for player: AudioStreamPlayer in [sound, sfx]:
+  if is_instance_valid(player):
+   player.stop()
+   player.stream = null
+ sfx_cache = {}
+func play_sfx(key: String) -> void:
+ # Headless checks have no speakers; skipping keeps their exit clean.
+ if not is_instance_valid(sfx) or DisplayServer.get_name() == "headless": return
+ if not sfx_cache.has(key): sfx_cache[key] = load_sfx(key)
+ var entry: Array = SFX_FILES.get(key, ["", 0.0])
+ sfx.volume_db = -4.0 + float(entry[1])
+ sfx.stream = sfx_cache[key]
+ sfx.play()
+# Prefer the bundled CC0 file; fall back to the synthesized tone if it is missing.
+func load_sfx(key: String) -> AudioStream:
+ var path: String = str(SFX_FILES.get(key, [""])[0])
+ if path != "" and ResourceLoader.exists(path):
+  var stream: Resource = load(path)
+  if stream is AudioStream: return stream
+ return make_sfx(key)
+func make_sfx(key: String) -> AudioStreamWAV:
+ # [start Hz, end Hz, seconds, voice]
+ var notes: Array = [[600.0, 600.0, 0.06, "pluck"]]
+ match key:
+  "place": notes = [[660.0, 660.0, 0.08, "pluck"]]
+  "expert": notes = [[660.0, 660.0, 0.07, "pluck"], [990.0, 990.0, 0.16, "bell"]]
+  "power": notes = [[220.0, 440.0, 0.22, "hum"]]
+  "material": notes = [[0.0, 0.0, 0.035, "noise"], [330.0, 330.0, 0.08, "pluck"]]
+  "survival": notes = [[523.0, 523.0, 0.07, "pluck"], [659.0, 659.0, 0.11, "pluck"]]
+  "science": notes = [[784.0, 784.0, 0.07, "bell"], [1175.0, 1175.0, 0.16, "bell"]]
+  "heal": notes = [[392.0, 392.0, 0.08, "pluck"], [523.0, 523.0, 0.14, "pluck"]]
+  "damage": notes = [[200.0, 140.0, 0.22, "hum"]]
+  "protect": notes = [[523.0, 523.0, 0.07, "bell"], [659.0, 659.0, 0.07, "bell"], [784.0, 784.0, 0.2, "bell"]]
+  "discovery": notes = [[523.0, 523.0, 0.08, "bell"], [659.0, 659.0, 0.08, "bell"], [784.0, 784.0, 0.08, "bell"], [1047.0, 1047.0, 0.3, "bell"]]
+  "streak": notes = [[659.0, 659.0, 0.07, "bell"], [880.0, 880.0, 0.16, "bell"]]
+  "page": notes = [[0.0, 0.0, 0.05, "noise"], [880.0, 880.0, 0.12, "bell"]]
+  "alarm": notes = [[392.0, 392.0, 0.12, "hum"], [0.0, 0.0, 0.05, "rest"], [392.0, 392.0, 0.12, "hum"]]
+ var rate: int = 22050
+ var total: int = 0
+ for n: Array in notes: total += int(float(n[2]) * rate)
+ var bytes: PackedByteArray = PackedByteArray()
+ bytes.resize(total * 2)
+ var noise: RandomNumberGenerator = RandomNumberGenerator.new()
+ noise.seed = 7
+ var at: int = 0
+ for n: Array in notes:
+  var count: int = int(float(n[2]) * rate)
+  var voice: String = str(n[3])
+  var decay: float = 6.0 if voice == "hum" else (12.0 if voice == "bell" else 20.0)
+  var phase: float = 0.0
+  for j: int in range(count):
+   var t: float = float(j) / rate
+   var f: float = lerpf(float(n[0]), float(n[1]), float(j) / maxf(1.0, float(count)))
+   phase += TAU * f / rate
+   var env: float = minf(1.0, float(j) / (0.004 * rate)) * exp(-t * decay) * minf(1.0, float(count - j) / (0.005 * rate))
+   var w: float = 0.0
+   match voice:
+    "bell": w = sin(phase) + 0.3 * sin(phase * 2.0)
+    "hum": w = sin(phase) + 0.25 * sin(phase * 3.0)
+    "noise": w = noise.randf_range(-1.0, 1.0)
+    "rest": w = 0.0
+    _: w = sin(phase)
+   bytes.encode_s16((at + j) * 2, clampi(int(w * env * 2600.0), -32768, 32767))
+  at += count
+ var wav: AudioStreamWAV = AudioStreamWAV.new()
+ wav.format = AudioStreamWAV.FORMAT_16_BITS
+ wav.mix_rate = rate
+ wav.data = bytes
+ return wav
+# --- Drawing ---
+func draw_feedback_layer() -> void:
+ draw_phase_badges()
+ draw_reveal_callout()
+ draw_sparks()
+ draw_floaters()
+ draw_streak_chip()
+ draw_milestone_banner()
+func draw_phase_badges() -> void:
+ var phase: String = str(state.get("phase", "morning"))
+ var x: float = 32.0 + font.get_string_size(trk("phase_" + phase), HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 14.0
+ if phase != "night" and Sim.event(state) == "flare" and not bool(state.get("over", false)):
+  var pulse: float = absf(sin(flare_alert_t * PI * 3.0)) if flare_alert_t < 1.0 else 0.0
+  var frame_col: Color = Color(RUST, 0.55 + 0.4 * pulse)
+  draw_style_box(style(Color(RUST, 0.03 + 0.06 * pulse), frame_col, 3 + int(round(2.0 * pulse)), 12), Rect2(29, 176, 872, 446))
+  draw_style_box(style(Color.TRANSPARENT, frame_col, 3, 16), Rect2(920, 143, 410, 220))
+  var label: String = trk("flare_alert")
+  var w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+  var pill: Rect2 = Rect2(x, 153, w + 38, 22).grow(pulse * 2.0)
+  draw_style_box(style(RUST, RUST, 1, 10), pill)
+  var o: Vector2 = pill.position + Vector2(9, 3)
+  draw_colored_polygon(PackedVector2Array([o + Vector2(8, 0), o + Vector2(16, 15), o + Vector2(0, 15)]), PAPER)
+  draw_line(o + Vector2(8, 5), o + Vector2(8, 10), RUST, 2.0)
+  draw_circle(o + Vector2(8, 12.5), 1.2, RUST)
+  text_at(label, pill.position.x + 30, pill.position.y + 16 + pulse * 2.0, 14, PAPER)
+  x = pill.end.x + 10.0
+ if streak >= 2:
+  var label2: String = trk("streak_badge", [streak])
+  var w2: float = font.get_string_size(label2, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+  var badge: Rect2 = Rect2(x, 153, w2 + 34, 22)
+  draw_style_box(style(PAPER, GOLD, 2 if streak_tier() > 1 else 1, 10), badge)
+  icon("star", Rect2(badge.position + Vector2(7, 3), Vector2(16, 16)))
+  text_at(label2, badge.position.x + 27, badge.position.y + 16, 14, GOLD)
+func callout_info(stage: String, p: float) -> Dictionary:
+ var report: Dictionary = night_report()
+ var info: Dictionary = {"icon":"book", "title":trk("outcome_none"), "sub":"", "color":INK}
+ match stage:
+  "power", "material":
+   var v: int = int(report.get(stage, 0))
+   info = {"icon":stage, "title":trk("reveal_"+stage, [signed(int(round(v * p)))]), "sub":"", "color":gain_color(v)}
+  "survival":
+   var net: int = int(report.get("survival", 0))
+   var harvest: int = int(report.get("harvest", 0))
+   if harvest > 0: info = {"icon":"greenhouse", "title":trk("reveal_harvest", [signed(int(round(harvest * p)))]), "sub":trk("reveal_survival", [signed(net)]), "color":gain_color(harvest)}
+   else: info = {"icon":"survival", "title":trk("reveal_survival", [signed(int(round(net * p)))]), "sub":"", "color":gain_color(net)}
+  "science":
+   var made: int = int(report.get("produced_science", 0))
+   if made > 0: info = {"icon":"star", "title":trk("reveal_science", [signed(int(round(made * p)))]), "sub":"", "color":gain_color(made)}
+   else: info = {"icon":"lab", "title":trk("reveal_paused"), "sub":"", "color":MUTED}
+  "health":
+   var hp: int = int(report.get("health", 0))
+   var flare: bool = str(report.get("event", "")) == "flare"
+   if flare and night_protected(report): info = {"icon":"shield", "title":trk("reveal_protected"), "sub":trk("reveal_health", [signed(int(round(hp * p)))]), "color":TEAL}
+   elif hp < 0: info = {"icon":"storm", "title":trk("reveal_health", [signed(int(round(hp * p)))]), "sub":"" if bool(state.get("over", false)) else trk("reveal_endured"), "color":RUST}
+   else: info = {"icon":"habitat", "title":trk("reveal_health", [signed(int(round(hp * p)))]), "sub":"", "color":gain_color(hp)}
+  "discovery":
+   var names: PackedStringArray = PackedStringArray()
+   var fresh: Variant = report.get("new_discoveries", [])
+   if fresh is Array:
+    for id: Variant in fresh: names.append(trk("unlock_" + str(id) + "_name"))
+   info = {"icon":"star", "title":trk("reveal_discovery", [" / ".join(names)]), "sub":"", "color":GOLD}
+ return info
+func draw_reveal_callout() -> void:
+ if str(state.get("phase", "")) != "night" or fx_t >= 1.0: return
+ var stages: Array = reveal_stages()
+ var n: int = stages.size()
+ var raw: float = clampf(fx_t, 0.0, 1.0) * float(n)
+ var i: int = mini(int(raw), n - 1)
+ var local: float = clampf(raw - float(i), 0.0, 1.0)
+ var info: Dictionary = callout_info(str(stages[i]), smoothstep(0.0, 1.0, local))
+ var a: float = clampf(local * 6.0, 0.0, 1.0)
+ if i == n - 1: a *= 1.0 - smoothstep(0.85, 1.0, local)
+ var pop: float = 1.0 - clampf(local * 4.0, 0.0, 1.0)
+ var col: Color = info.color
+ var box: Rect2 = Rect2(279, 345, 370, 100)
+ draw_style_box(style(Color(PAPER, 0.95 * a), Color(col, a), 2 + streak_tier(), 14), box)
+ icon(str(info.icon), Rect2(box.position + Vector2(18, 22), Vector2(54, 54)), Color(1, 1, 1, a))
+ var sub: String = str(info.sub)
+ var title_y: float = box.position.y + (50.0 if sub != "" else 62.0)
+ text_at(str(info.title), box.position.x + 86, title_y, 28 + int(round(8.0 * pop)), Color(col, a), 270)
+ if sub != "": text_at(sub, box.position.x + 86, box.position.y + 80, 15, Color(INK, a), 270)
+ for j: int in range(n):
+  draw_circle(Vector2(box.end.x - 16 - float(n - 1 - j) * 12.0, box.end.y - 12), 3.5, Color(col if j <= i else LINE, a))
+func draw_floaters() -> void:
+ for f: Dictionary in floaters:
+  var age: float = float(f.age)
+  if age < 0.0: continue
+  var k: float = age / float(f.life)
+  var a: float = 1.0 - smoothstep(0.6, 1.0, k)
+  var size_px: int = int(f.size)
+  if bool(f.pop): size_px += int(round(6.0 * (1.0 - clampf(age * 5.0, 0.0, 1.0))))
+  var lift: float = 30.0 * (1.0 - pow(1.0 - minf(k * 1.6, 1.0), 3.0))
+  var text: String = str(f.text)
+  var icon_key: String = str(f.icon)
+  var icon_w: float = float(size_px) + 4.0 if icon_key != "" and icons.has(icon_key) else 0.0
+  var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x + icon_w
+  var pos: Vector2 = Vector2(f.pos) - Vector2(w * 0.5, lift)
+  var col: Color = f.color
+  draw_style_box(style(Color(PAPER, 0.88 * a), Color(col, 0.7 * a), 1, 8), Rect2(pos - Vector2(6, size_px + 3), Vector2(w + 12, size_px + 10)))
+  if icon_w > 0.0: icon(icon_key, Rect2(pos - Vector2(0, size_px - 1), Vector2(size_px, size_px)), Color(1, 1, 1, a))
+  text_at(text, pos.x + icon_w, pos.y + 1, size_px, Color(col, a))
+func draw_sparks() -> void:
+ for sp: Dictionary in sparks:
+  var k: float = float(sp.age) / float(sp.life)
+  var col: Color = Color(sp.color, 0.85 * (1.0 - k))
+  var r: float = float(sp.size) * (1.0 - 0.5 * k)
+  var at: Vector2 = sp.pos
+  if bool(sp.star):
+   draw_line(at - Vector2(r, 0), at + Vector2(r, 0), col, 1.6, true)
+   draw_line(at - Vector2(0, r), at + Vector2(0, r), col, 1.6, true)
+  else: draw_circle(at, r * 0.5, col)
+func draw_streak_chip() -> void:
+ if streak_chip_t < 0.0 or streak_chip_t >= 1.0: return
+ var a: float = smoothstep(0.0, 0.12, streak_chip_t) * (1.0 - smoothstep(0.8, 1.0, streak_chip_t))
+ var label: String = trk("streak_cheer", [streak])
+ var w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + 70.0
+ var box: Rect2 = Rect2(464.0 - w * 0.5, 196, w, 46)
+ draw_style_box(style(Color(PAPER, 0.95 * a), Color(GOLD, a), 2, 14), box)
+ icon("star", Rect2(box.position + Vector2(14, 9), Vector2(28, 28)), Color(1, 1, 1, a))
+ text_at(label, box.position.x + 52, box.position.y + 31, 20, Color(GOLD, a))
+func draw_milestone_banner() -> void:
+ var a: float = banner_alpha()
+ if a <= 0.0 or banner_ids.is_empty(): return
+ var center: Vector2 = Vector2(464, 396)
+ draw_rect(Rect2(32, 180, 864, 438), Color(PAPER, 0.4 * a))
+ for i: int in range(16):
+  var ang: float = TAU * float(i) / 16.0 + banner_t * 0.6
+  var dir: Vector2 = Vector2(cos(ang), sin(ang))
+  draw_line(center + dir * 120.0, center + dir * 300.0, Color(GOLD, 0.16 * a), 7.0, true)
+ var count: int = mini(banner_ids.size(), 2)
+ var box: Rect2 = Rect2(152, 396 - (70 + count * 56) * 0.5, 624, 70 + count * 56)
+ draw_style_box(style(Color(PAPER, a), Color(RUST, a), 3, 16), box)
+ draw_style_box(style(Color.TRANSPARENT, Color(GOLD, a), 1, 12), box.grow(-6))
+ var at: int = int(Sim.R.unlock_plant_at) if "crops" in banner_ids else int(Sim.R.unlock_shield_at)
+ centered(trk("milestone_title", [at]), Rect2(box.position.x, box.position.y + 10, box.size.x, 46), 32, Color(RUST, a))
+ for j: int in range(count):
+  var id: String = str(banner_ids[j])
+  var y: float = box.position.y + 66 + j * 56
+  var effect: String = trk("milestone_shielding_effect", [str(Sim.R.shield_factor), str(Sim.R.shield_factor_plus)]) if id == "shielding" else trk("milestone_crops_effect", [int(Sim.R.plant_yield), int(Sim.R.plant_yield) + int(Sim.R.plant_unlock_bonus)])
+  var line: String = trk("milestone_unlocked", [trk("unlock_" + id + "_name")])
+  var w: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + 38.0
+  var left: float = box.get_center().x - w * 0.5
+  icon("shield" if id == "shielding" else "greenhouse", Rect2(left, y, 30, 30), Color(1, 1, 1, a))
+  text_at(line, left + 38, y + 23, 20, Color(INK, a))
+  centered(effect, Rect2(box.position.x, y + 30, box.size.x, 22), 16, Color(TEAL, a))

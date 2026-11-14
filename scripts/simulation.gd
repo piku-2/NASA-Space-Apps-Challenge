@@ -134,6 +134,16 @@ static func project(s: Dictionary, cover: bool) -> Dictionary:
  var n: Dictionary = s.duplicate(true)
  n.flare_cover = cover
  return calculate(n)
+# Planning feedback only. Both sides reuse calculate, so the numbers match tonight exactly.
+static func forecast_change(before: Dictionary, after: Dictionary) -> Dictionary:
+ var a: Dictionary = calculate(before)
+ var b: Dictionary = calculate(after)
+ var out: Dictionary = {}
+ for k: String in ["survival","power","material","science","health"]:
+  out[k] = (int(b[k])-int(after[k])) - (int(a[k])-int(before[k]))
+ out["harvest"] = int(b.report.get("harvest",0)) - int(a.report.get("harvest",0))
+ out["shortage"] = bool(b.get("shortage",false)) and not bool(a.get("shortage",false))
+ return out
 static func begin_day(s: Dictionary) -> Dictionary:
  if str(s.get("phase","morning")) != "morning" or bool(s.get("over", false)): return s.duplicate(true)
  var n: Dictionary = s.duplicate(true)

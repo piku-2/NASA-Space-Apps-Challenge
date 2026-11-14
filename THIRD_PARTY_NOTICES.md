@@ -10,6 +10,15 @@
 
 フォントは変更せず同梱しています。日本語を含む画面表示に使用します。
 
+## 効果音（Kenney）
+
+- 同梱ファイル: `assets/sfx/*.ogg`
+- 制作: Kenney（https://www.kenney.nl）
+- 配布元: Interface Sounds（https://kenney.nl/assets/interface-sounds）、RPG Audio（https://kenney.nl/assets/rpg-audio）、Music Jingles（https://kenney.nl/assets/music-jingles）
+- ライセンス: Creative Commons Zero（CC0 1.0）
+- ライセンス全文: [assets/sfx/LICENSE-Kenney-CC0.txt](assets/sfx/LICENSE-Kenney-CC0.txt)
+- ファイルごとの元素材と用途: [assets/sfx/CREDITS.md](assets/sfx/CREDITS.md)
+
 ## Godot MCP Toolkit
 
 `addons/godot_mcp_toolkit/` に含まれます。ライセンスと帰属情報は同ディレクトリの [LICENSE](addons/godot_mcp_toolkit/LICENSE) と [ATTRIBUTIONS.md](addons/godot_mcp_toolkit/ATTRIBUTIONS.md) を参照してください。

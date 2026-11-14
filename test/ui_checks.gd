@@ -208,6 +208,72 @@ func run_checks() -> void:
  game.load_game()
  assert(game.fx_t==1.0 and not game.fx_playing)
  assert(int(game.state.health)==int(settled.health) and bool(game.state.flare_cover)==bool(settled.flare_cover))
+ # Tempo layer: instant placement feedback, staged night reveal, milestone banner and streak.
+ game.motion_frozen=false
+ game.set_language("ja")
+ game.state=game.Sim.initial()
+ game.reset_feedback()
+ game.streak=0
+ game.refresh()
+ game.selected_crew="sora"
+ game.select_cell(7)
+ assert(game.Sim.crew_cell(game.state,"sora")==7)
+ assert(game.floaters.size()>=2)
+ var expert_seen: bool=false
+ for f: Dictionary in game.floaters:
+  if str(f.text)==game.trk("expert_pop",[int(game.Sim.expert_bonus("lab"))]): expert_seen=true
+ assert(expert_seen and not game.sparks.is_empty() and game.hop.has("sora"))
+ var plain_state: Dictionary=game.state.duplicate(true)
+ game.feedback_step(0.2)
+ assert(game.state==plain_state)
+ game.forecast_roll={}
+ assert(game.rolled("science",3)==3)
+ assert(game.rolled("science",5)==3 and float(game.forecast_roll.science.flash)==1.0)
+ game.feedback_step(2.0)
+ assert(game.rolled("science",5)==5)
+ # The night reveal follows power, material, harvest, research, health, discovery.
+ game.state=game.Sim.initial()
+ game.state.science=8
+ game.state=game.Sim.place(game.state,"sora",7)
+ game.state=game.Sim.place(game.state,"haru",4)
+ game.state=game.Sim.begin_day(game.state)
+ game.streak=2
+ game.advance_phase()
+ assert(str(game.state.phase)=="night" and game.fx_playing)
+ assert(game.streak==3 or int(game.state.report.survival)<=0)
+ var stages: Array=game.reveal_stages()
+ var order: Array=["power","material","survival","science","health","discovery"]
+ var last: int=-1
+ for st: Variant in stages:
+  var at: int=order.find(str(st))
+  assert(at>last)
+  last=at
+ assert("discovery" in stages and stages.find("power")<stages.find("science"))
+ var settled_night: Dictionary=game.state.duplicate(true)
+ game.presentation_step(0.01)
+ assert(game.stage_progress("science")==0.0)
+ assert(game.shown_amount("science")==int(settled_night.science)-int(settled_night.report.science))
+ game.presentation_step(5.0)
+ assert(not game.fx_playing and game.fx_t==1.0)
+ assert(game.banner_t==0.0 and "shielding" in game.banner_ids)
+ assert(game.state==settled_night)
+ assert(game.skip_presentation() and game.banner_t==1.0)
+ assert(str(game.state.phase)=="night")
+ game.on_primary()
+ assert(str(game.state.phase)=="morning")
+ # Every effect uses its bundled CC0 file instead of the synthesized fallback.
+ for key: Variant in game.SFX_FILES.keys():
+  assert(ResourceLoader.exists(str(game.SFX_FILES[key][0])))
+  assert(game.load_sfx(str(key)) is AudioStreamOggVorbis)
+ # The streak lives beside the save state and survives a reload.
+ game.streak=4
+ game.save_game()
+ game.streak=0
+ game.load_game()
+ assert(game.streak==4)
+ game.restart()
+ assert(game.streak==0)
+ game.motion_frozen=true
  print("PASS: direct crew assignment, movement, capacity, palette building, forecast, localization and save migration")
  game.state=game.Sim.initial()
  game.save_game()

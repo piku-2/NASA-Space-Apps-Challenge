@@ -1,6 +1,6 @@
 # 開発手順
 
-1. Godot 4.6.3 と Python 3、GNU Make を用意します。
+1. Godot 4.7.2 と Python 3、GNU Make を用意します。
 2. `project.godot` を開くか、`make import` でリソースをインポートします。
 3. 変更後に `make test` を実行します。
 4. 表示に関わる変更は `make run` で日本語・英語の両方を確認します。
