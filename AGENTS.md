@@ -2,7 +2,7 @@
 
 ## プロジェクト
 
-- TypeScript / Phaser 4.2.1 / Vite の火星基地運営ゲーム「Mars Notebook」。
+- TypeScript / Phaser 4.2.1 / Vite の月面基地運営ゲーム「Moon Notebook」。
 - 7〜12歳向けに、資源・電力・放射線対策のトレードオフを伝える。
 - ユーザーとの会話・作業報告は日本語を基本とする。
 - 遊べる実装は `src/`。確認とビルドは npm だけで行う。
