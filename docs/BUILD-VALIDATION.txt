@@ -1,8 +1,16 @@
-Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+Godot Engine v4.6.3.stable.official.7d41c59c4
 
-PASS: 37 simulation checks
-[MCPRuntimeServer] off (GODOT_MCP_RUNTIME=0): not listening or registering this run.
-Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+PASS: 63 simulation checks
+PASS: UI pointer clicks, direct crew assignment and movement, capacity, persistent building palette, construction costs, forecast equality, localization, save/restore and v1 migration
+PASS: Japanese / English, help and science notes rendered and inspected
 
-[MCPRuntimeServer] off (GODOT_MCP_RUNTIME=0): not listening or registering this run.
-PASS: UI commands, costs, localization, save and restore
+Run with GODOT_MCP_RUNTIME=0:
+  godot --headless --path . --script test/run_tests.gd
+  godot --headless --path . --script test/ui_checks.gd
+  godot --path . --script test/screens.gd
+
+Balance: initial survival 10; daily consumption 2.
+At level 1 per crew: recycler +1 survival/day, plant +6 every 5 powered working days.
+Unstaffed, unpowered and shelter days pause plant progress.
+Production scales with crew and facility level.
+Both two crew on recycling and recycler + plant staffing strategies survive the 15-day mission, sheltering during flares and achieving 30 research, without resupply.
