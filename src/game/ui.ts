@@ -259,7 +259,7 @@ function sheetHtml(session: Session, tr: Tr): string {
   return `
     <div class="sheet-header">${headerHtml(session, tr)}</div>
     <div class="sheet-event">${eventHtml(session, tr)}</div>
-    <div class="sheet-build">${buildHtml(session, tr)}</div>
+    ${session.state.phase === 'night' ? '' : `<div class="sheet-build">${buildHtml(session, tr)}</div>`}
     <div class="sheet-forecast">${forecastHtml(session, tr)}</div>
     <div class="sheet-crew">${crewHtml(session, tr)}</div>
     <div class="sheet-footer">${footerHtml(session, tr)}</div>
@@ -295,7 +295,7 @@ function headerHtml(session: Session, tr: Tr): string {
     <img class="logo" src="${LOGO}" alt="">
     <h1 class="title-name">${show(tr('title'))}</h1>
     ${session.streak >= 2 ? `<span class="streak" tabindex="0" ${tipAttr(tr('streak_badge', [session.streak]))}>${session.streak}</span>` : ''}
-    <button type="button" class="icon-btn help-btn" data-act="help" ${tipAttr(tr('help'))}>${show(tr('btn_help'))}</button>
+    <button type="button" class="icon-btn help-btn" data-act="help" ${tipAttr(tr('help'))}>${esc(tr('btn_help'))}</button>
     <button type="button" class="lang" data-act="lang">${show(tr('language'))}</button>
   `
 }
@@ -310,7 +310,22 @@ function eventHtml(session: Session, tr: Tr): string {
   const nextTip = (night ? tr('next_morning_weather') : tr('tomorrow')) + tr(ahead) + '\n' + tr(ahead + '_desc')
   if (night && state.report) {
     const report = state.report
-    return `<section id="event" class="panel night-summary" aria-live="polite"><h2>${show(tr('outcome'))}</h2><div class="night-health">${show(tr('health'))} ${signed(report.health)} · ${state.health}%</div>${report.harvest > 0 ? `<p>✓ ${show(tr('outcome_harvest', [report.harvest]))}</p>` : ''}${report.shortage ? `<p class="down">! ${show(tr('shortage'))}</p>` : ''}${report.event === 'flare' ? `<p>${show(tr(report.sheltered ? 'night_shelter' : report.cover_committed ? 'night_cover' : 'night_keep_hit', report.cover_committed ? [report.cover_power, report.damage] : [report.damage]))}</p>` : ''}${report.new_discoveries.map(id => `<p class="discovery">★ ${show(tr('discovered', [tr('unlock_' + id + '_name')]))}</p>`).join('')}<p class="next-result">${show(tr('next_short'))}：${show(tr('wx_' + ahead))}</p></section>`
+    const healthDelta = report.health === 0 ? '' : ` ${signed(report.health)}`
+    const resources = (['survival', 'power', 'material', 'science'] as const).map(key => {
+      const value = report[key]
+      const icon = ICONS[key === 'science' ? 'star' : key]
+      return `<div class="night-res ${value < 0 ? 'down' : ''}" data-res="${key}" tabindex="0" ${tipAttr(tr(key))}><img src="${icon}" alt=""><strong>${signed(value)}</strong></div>`
+    }).join('')
+    const flareKey = report.sheltered ? 'night_shelter' : report.cover_committed ? 'night_cover' : 'night_keep_hit'
+    const flareArgs = report.cover_committed ? [report.cover_power, report.damage] : [report.damage]
+    const flareText = tr(flareKey, flareArgs)
+    const notes = [
+      report.harvest > 0 ? note('✓ ' + tr('outcome_harvest', [report.harvest]), 'harvest') : '',
+      report.shortage ? note(tr('shortage'), 'shortage down') : '',
+      report.event === 'flare' ? note(flareText, 'cover') : '',
+      ...report.new_discoveries.map(id => note('★ ' + tr('discovered', [tr('unlock_' + id + '_name')]), 'discovery')),
+    ].join('')
+    return `<section id="event" class="panel night-summary" aria-live="polite"><h2>${show(tr('outcome'))}</h2><div class="night-health">${show(tr('health'))} ${state.health}%${healthDelta}</div><div class="night-grid">${resources}</div>${notes}<p class="next-result" tabindex="0" ${tipAttr(nextTip)}>${show(tr('next_short'))}：${show(tr('wx_' + ahead))}</p></section>`
   }
   return `
     <section id="event" class="panel">
@@ -321,26 +336,29 @@ function eventHtml(session: Session, tr: Tr): string {
   `
 }
 
+function note(text: string, klass = ''): string {
+  return `<p class="${klass}" tabindex="0" ${tipAttr(text)}>${show(text)}</p>`
+}
+
 function forecastHtml(session: Session, tr: Tr): string {
   const state = session.state
-  const night = state.phase === 'night'
-  const forecast = night ? null : calculate(state)
+  if (state.phase === 'night') return ''
+  const forecast = calculate(state)
   const deltas = {
-    survival: night ? state.report?.survival ?? 0 : (forecast?.survival ?? 0) - state.survival,
-    power: night ? state.report?.power ?? 0 : (forecast?.power ?? 0) - state.power,
-    material: night ? state.report?.material ?? 0 : (forecast?.material ?? 0) - state.material,
-    science: night ? state.report?.science ?? 0 : (forecast?.science ?? 0) - state.science,
+    survival: (forecast?.survival ?? 0) - state.survival,
+    power: (forecast?.power ?? 0) - state.power,
+    material: (forecast?.material ?? 0) - state.material,
+    science: (forecast?.science ?? 0) - state.science,
   }
   const warning = !forecast ? '' : forecast.shortage ? tr('shortage') : forecast.over ? tr('loss_title') : ''
   const cols = (['survival', 'power', 'material', 'science'] as const).map((key, index) => {
     const value = deltas[key]
     const icon = ICONS[key === 'science' ? 'star' : key]
-    return `<div class="delta ${value >= 0 ? 'up' : 'down'}" tabindex="0" style="left:${930 + index * 100}px" ${tipAttr(tr(night ? 'outcome' : 'forecast') + ' · ' + tr(key))}><img src="${icon}" alt=""><strong>${signed(value)}</strong></div>`
+    return `<div class="delta ${value >= 0 ? 'up' : 'down'}" tabindex="0" style="left:${930 + index * 100}px" ${tipAttr(tr('forecast') + ' · ' + tr(key))}><img src="${icon}" alt=""><strong>${signed(value)}</strong></div>`
   }).join('')
   return `
-    <div class="forecast-label">${show(tr(night ? 'outcome' : 'forecast_short'))}${state.rules_version === 4 ? ` · ${show(tr('base_draw', [R.life_support_power]))}` : ''}</div>
     ${cols}
-    ${warning && !night ? `<p class="warn" tabindex="0" ${tipAttr(warning)}>!</p>` : ''}
+    ${warning ? `<p class="warn" tabindex="0" ${tipAttr(warning)}>!</p>` : ''}
   `
 }
 

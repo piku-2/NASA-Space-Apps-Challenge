@@ -590,7 +590,8 @@ export function restore(candidate: unknown, version: number): GameState | null {
     const numeric = ['harvest', 'survival', 'power', 'material', 'science', 'health', 'damage', 'produced_survival', 'produced_power', 'produced_material', 'produced_science', 'healed', 'research_paused', 'cover_power', 'upkeep_power']
     for (const key of numeric) report[key] = isNum(report[key]) ? int(report[key]) : 0
     for (const key of ['shortage', 'sheltered', 'cover_committed']) report[key] = report[key] === true
-    report.event = typeof report.event === 'string' && CONFIG.events.includes(report.event) ? report.event : eventOf({ day: Math.max(1, normalized.day - 1), seed: normalized.seed })
+    const named = typeof report.event === 'string' ? report.event : ''
+    report.event = named === 'flare' || CONFIG.events.includes(named) ? named : eventOf({ day: Math.max(1, normalized.day - 1), seed: normalized.seed })
     report.new_discoveries = Array.isArray(report.new_discoveries) ? report.new_discoveries.filter(id => id === 'shielding' || id === 'crops') : []
     report.harvest_cells = Array.isArray(report.harvest_cells) ? report.harvest_cells.filter(index => isNum(index) && Number.isInteger(index) && index >= 0 && index < 18) : []
   }

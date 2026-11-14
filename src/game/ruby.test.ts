@@ -25,5 +25,7 @@ describe("ruby", () => {
     assert.match(rubyHtml("何とか"), /<ruby>何<rt>なん<\/rt><\/ruby>/)
     assert.match(rubyHtml("何を"), /<ruby>何<rt>なに<\/rt><\/ruby>/)
     assert.match(rubyHtml("働く"), /<ruby>働<rt>はたら<\/rt><\/ruby>く/)
+    assert.match(rubyHtml("活動"), /<ruby>活<rt>かつ<\/rt><\/ruby><ruby>動<rt>どう<\/rt><\/ruby>/)
+    assert.match(rubyHtml("活動結果"), /<ruby>活<rt>かつ<\/rt><\/ruby><ruby>動<rt>どう<\/rt><\/ruby><ruby>結<rt>けっ<\/rt><\/ruby><ruby>果<rt>か<\/rt><\/ruby>/)
   })
 })

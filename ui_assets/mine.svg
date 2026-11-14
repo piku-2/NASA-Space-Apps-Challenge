@@ -1,9 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <g fill="none" stroke="#f5f0e6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-    <!-- handle -->
-    <line x1="12" y1="48" x2="44" y2="16" />
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="-8 -8 80 80">
+  <g fill="none" stroke="#b65030" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+     transform="rotate(45 32 32)">
+    <!-- thinner crescent blade -->
+    <path d="M8 30
+             C16 20, 48 20, 56 30
+             C48 27, 16 27, 8 30 Z"/>
 
-    <!-- Minecraft pickaxe head (no inward curl at tips) -->
-    <polyline points="10,18 14,14 34,14 46,26 46,46 42,50" />
+    <!-- longer handle attached to bottom of blade -->
+    <line x1="32" y1="30" x2="32" y2="72"/>
   </g>
 </svg>

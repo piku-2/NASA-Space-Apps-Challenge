@@ -250,7 +250,7 @@ try {
   })
   await paced.reload()
   await paced.locator('[data-act=start]').click()
-  assert.equal(await paced.locator('.forecast-label').innerText().then(text => text.includes('基地の電力')), false)
+  assert.equal(await paced.locator('.forecast-label').count(), 0)
   await pace.close()
   const reduced = await browser.newContext({ viewport: { width: 1360, height: 800 }, reducedMotion: 'reduce' })
   await reduced.route('**/*', route => {

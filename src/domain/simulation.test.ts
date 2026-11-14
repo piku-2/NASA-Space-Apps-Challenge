@@ -510,6 +510,10 @@ describe('mission power budget', () => {
     assert.deepEqual(loaded.report?.harvest_cells, [4])
     assert.equal(loaded.report?.science, 0)
     assert.equal(loaded.report?.event, 'sun')
+    const flareKept = restore({ ...state, report: { event: 'flare', cover_committed: true, cover_power: 6, damage: 8, health: -8 } }, 3)!
+    assert.equal(flareKept.report?.event, 'flare')
+    assert.equal(flareKept.report?.cover_committed, true)
+    assert.equal(flareKept.report?.health, -8)
     assert.equal(loaded.phase, 'night')
   })
   it('charges base power once and preserves old saves without this rule', () => {

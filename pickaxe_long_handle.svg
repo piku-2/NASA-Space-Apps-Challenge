@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="-8 -8 80 80">
+  <g fill="none" stroke="#b65030" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+     transform="rotate(45 32 32)">
+    <!-- thinner crescent blade -->
+    <path d="M8 30 
+             C16 20, 48 20, 56 30 
+             C48 27, 16 27, 8 30 Z"/>
+    
+    <!-- longer handle attached to bottom of blade -->
+    <line x1="32" y1="30" x2="32" y2="72"/>
+  </g>
+</svg>
