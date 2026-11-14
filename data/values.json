@@ -1,0 +1,7 @@
+{
+ "source":"TBD — all resource units and effects are game balance, not physical NASA quantities",
+ "initial":{"day":1,"water":18,"power":16,"food":18,"material":12,"science":0,"health":100,"crew":5,"seed":42,"shield":false,"shelter":false,"won":false,"over":false,"delivery":-1},
+ "rules":{"days":15,"target":30,"daily_water":3,"daily_food":3,"capacity":2,"max_level":3,"upgrade":3,"build":4,"shield_cost":5,"shelter_power":3,"solar":5,"solar_staff":3,"water":5,"water_power":2,"food":5,"food_water":2,"food_power":2,"lab":3,"lab_power":2,"mine":3,"mine_power":1,"habitat_heal":4,"solar_bonus":2,"flare_damage":18,"shield_factor":0.35,"supply_cost":4,"delivery_days":2,"delivery_water":6,"delivery_food":6,"delivery_material":4,"supply_interval":5},
+ "facilities":["solar","water","greenhouse","lab","habitat","mine","shield"],
+ "events":["sun","calm","dust","sun","flare","calm","sun","dust","calm","flare","sun","calm","dust","sun","calm"]
+}

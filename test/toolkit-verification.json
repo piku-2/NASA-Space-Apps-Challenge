@@ -1,0 +1,64 @@
+[
+  {
+    "method": "scene.open",
+    "response": {
+      "id": 1,
+      "jsonrpc": "2.0",
+      "result": {
+        "path": "res://scenes/main.tscn",
+        "success": true
+      }
+    }
+  },
+  {
+    "method": "scene.get_tree",
+    "response": {
+      "id": 2,
+      "jsonrpc": "2.0",
+      "result": {
+        "success": true,
+        "tree": "<untrusted-3f98ceaa kind=\"scene_tree\" source=\"res://scenes/main.tscn\">\n{\"children\":[],\"class\":\"Control\",\"name\":\"MarsNotebook\",\"path\":\".\"}\n</untrusted-3f98ceaa>"
+      }
+    }
+  },
+  {
+    "method": "script.check",
+    "response": {
+      "id": 3,
+      "jsonrpc": "2.0",
+      "result": {
+        "diagnostics": [],
+        "file_path": "res://scripts/main.gd",
+        "success": true,
+        "valid": true
+      }
+    }
+  },
+  {
+    "method": "script.check",
+    "response": {
+      "id": 4,
+      "jsonrpc": "2.0",
+      "result": {
+        "diagnostics": [],
+        "file_path": "res://scripts/simulation.gd",
+        "success": true,
+        "valid": true
+      }
+    }
+  },
+  {
+    "method": "scene.create",
+    "response": {
+      "id": 5,
+      "jsonrpc": "2.0",
+      "result": {
+        "path": "res://scenes/toolkit_verified.tscn",
+        "root_name": "ToolkitVerified",
+        "root_path": ".",
+        "status": "returned",
+        "success": true
+      }
+    }
+  }
+]

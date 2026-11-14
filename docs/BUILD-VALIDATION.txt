@@ -1,0 +1,8 @@
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+PASS: 37 simulation checks
+[MCPRuntimeServer] off (GODOT_MCP_RUNTIME=0): not listening or registering this run.
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+[MCPRuntimeServer] off (GODOT_MCP_RUNTIME=0): not listening or registering this run.
+PASS: UI commands, costs, localization, save and restore
