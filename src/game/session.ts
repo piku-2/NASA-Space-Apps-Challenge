@@ -212,12 +212,10 @@ export class Session {
     this.buildKind = ''
     this.confirmRestart = false
     const phase = this.state.phase
-    if (phase === 'morning') {
-      this.state = beginDay(this.state)
-      this.action = []
-    } else if (phase === 'day') {
+    if (phase === 'morning' || phase === 'day') {
       const wasWon = this.state.won
-      this.state = resolveDay(this.state)
+      const started = phase === 'morning' ? beginDay(this.state) : this.state
+      this.state = resolveDay(started)
       this.action = phaseNotices(this.state)
       if (this.state.phase === 'night' && this.state.report) {
         this.history.push(noteFrom(this.state.report, shownDay(this.state)))

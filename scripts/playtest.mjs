@@ -210,7 +210,6 @@ try {
   await paced.goto(base)
   await paced.locator('[data-act=start]').click()
   await paced.locator('[data-act=advance]').click()
-  await paced.locator('[data-act=advance]').click()
   await waitPhase(paced, 'night')
   const skipped = await readState(paced)
   await paced.waitForTimeout(800)
