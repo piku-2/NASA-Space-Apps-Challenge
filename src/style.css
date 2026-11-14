@@ -50,6 +50,14 @@ body {
 
 h1, h2, h3, p { margin: 0; }
 
+ruby { ruby-position: over; ruby-align: center; }
+rt {
+  font-size: 0.45em;
+  line-height: 1;
+  font-weight: 400;
+  user-select: none;
+}
+
 button {
   font: inherit;
   color: var(--ink);
@@ -84,10 +92,10 @@ button:disabled,
 .day {
   position: absolute;
   left: 32px;
-  top: 16px;
-  font-size: 37px;
+  top: 8px;
+  font-size: 34px;
   color: var(--rust);
-  line-height: 1;
+  line-height: 1.45;
 }
 
 .logo {
@@ -101,11 +109,11 @@ button:disabled,
 .title-name {
   position: absolute;
   left: 113px;
-  top: 104px;
-  font-size: 41px;
+  top: 96px;
+  font-size: 36px;
   font-weight: 400;
   color: var(--rust);
-  line-height: 1;
+  line-height: 1.45;
 }
 
 .mission {
@@ -146,18 +154,21 @@ button:disabled,
 
 .icon-btn {
   position: absolute;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   font-size: 16px;
+  white-space: nowrap;
+  line-height: 1.45;
 }
 
 .icon-btn img { width: 40px; height: 40px; pointer-events: none; }
-.help-btn { left: 1092px; top: 84px; width: 64px; height: 48px; }
-.book-btn { left: 24px; top: 724px; width: 64px; height: 52px; }
-.restart-btn { left: 96px; top: 724px; width: 64px; height: 52px; }
-.up-btn { left: 748px; top: 724px; width: 64px; height: 52px; }
-.back-btn { left: 820px; top: 724px; width: 76px; height: 52px; }
+.help-btn { left: 1076px; top: 78px; width: 80px; height: 58px; }
+.book-btn { left: 24px; top: 718px; width: 72px; height: 58px; }
+.restart-btn { left: 104px; top: 718px; width: 72px; height: 58px; }
+.up-btn { left: 736px; top: 718px; width: 76px; height: 58px; }
+.back-btn { left: 820px; top: 718px; width: 76px; height: 58px; }
 .lang {
   position: absolute;
   left: 1165px;
@@ -200,12 +211,13 @@ button:disabled,
 .event-row {
   position: absolute;
   left: 24px;
-  top: 36px;
+  top: 28px;
   min-width: 120px;
-  height: 72px;
+  height: 84px;
   display: grid;
   place-items: center;
-  font-size: 36px;
+  font-size: 32px;
+  line-height: 1.45;
   color: var(--rust);
 }
 
@@ -319,14 +331,15 @@ button:disabled,
 .forecast-label {
   position: absolute;
   left: 940px;
-  top: 586px;
+  top: 568px;
   color: var(--muted);
-  font-size: 17px;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .delta {
   position: absolute;
-  top: 604px;
+  top: 608px;
   width: 96px;
   display: flex;
   align-items: center;
@@ -368,18 +381,21 @@ button:disabled,
   border-color: var(--rust);
   border-width: 3px;
 }
-button.primary.advance { font-size: 28px; }
+button.primary.advance { font-size: 28px; line-height: 1.45; }
 
 .crew-mark {
   position: absolute;
-  left: 28px;
-  top: 648px;
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
+  left: 20px;
+  top: 640px;
+  width: 68px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--muted);
   font-size: 16px;
+  white-space: nowrap;
+  line-height: 1.45;
 }
 
 .crew-note {
@@ -464,12 +480,12 @@ button.primary.advance { font-size: 28px; }
   position: absolute;
   z-index: 6;
   max-width: 280px;
-  padding: 8px 10px;
+  padding: 12px 10px 8px;
   background: var(--ink);
   color: var(--paper);
   border-radius: 8px;
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 1.8;
   pointer-events: none;
   white-space: pre-wrap;
 }
@@ -655,18 +671,19 @@ button.primary.advance { font-size: 28px; }
   position: absolute;
   left: 0;
   right: 0;
-  top: 292px;
+  top: 276px;
   text-align: center;
   color: var(--rust);
-  font-size: 64px;
+  font-size: 56px;
   font-weight: 400;
+  line-height: 1.45;
 }
 
 #title .sub {
   position: absolute;
   left: 80px;
   right: 80px;
-  top: 384px;
+  top: 400px;
   text-align: center;
   color: var(--muted);
   font-size: 20px;
@@ -676,7 +693,7 @@ button.primary.advance { font-size: 28px; }
   position: absolute;
   left: 80px;
   right: 80px;
-  top: 464px;
+  top: 478px;
   text-align: center;
   font-size: 22px;
 }
@@ -684,9 +701,9 @@ button.primary.advance { font-size: 28px; }
 #title .start {
   position: absolute;
   left: 505px;
-  top: 536px;
+  top: 548px;
   width: 350px;
-  height: 64px;
+  height: 72px;
   font-size: 26px;
 }
 
