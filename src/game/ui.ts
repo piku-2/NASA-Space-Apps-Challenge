@@ -544,14 +544,14 @@ function signed(value: number): string {
 }
 
 function crewColor(id: string): string {
-  if (id === 'rikuto') return '#f0f0f2'
+  if (id === 'rikuto') return '#f5f0e6'
   switch (specialty(id)) {
-    case 'solar': return '#f0f0f2'
-    case 'water': return '#b8c0c8'
-    case 'greenhouse': return '#d5dae0'
-    case 'lab': return '#b8c0c8'
-    case 'mine': return '#a0a4aa'
-    default: return '#a0a4aa'
+    case 'solar': return '#e8d48a'
+    case 'water': return '#f5f0e6'
+    case 'greenhouse': return '#f0dc9a'
+    case 'lab': return '#f5f0e6'
+    case 'mine': return '#a89e8a'
+    default: return '#a89e8a'
   }
 }
 
