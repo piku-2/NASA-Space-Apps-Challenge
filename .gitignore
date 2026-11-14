@@ -1,4 +1,7 @@
-# Godot caches and export credentials.
+# Node and web build caches.
+/node_modules/
+
+# Local editor caches and export credentials.
 /.godot/
 /.mcp_toolkit_backups/
 *.import

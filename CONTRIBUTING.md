@@ -1,12 +1,10 @@
 # 開発手順
 
-1. Godot 4.7.2 と Python 3、GNU Make を用意します。
-2. `project.godot` を開くか、`make import` でリソースをインポートします。
-3. 変更後に `make test` を実行します。
-4. 表示に関わる変更は `make run` で日本語・英語の両方を確認します。
-5. Web に関わる変更は `make export-web` と `make serve` でブラウザーでも確認します。
-
-Godot の実行パスは `make test GODOT=/path/to/godot` のように指定できます。テスト時のセーブは `.godot/test-user-data/` に保存されます。
+1. Node.js 24 と npm、Python 3 を用意します。
+2. `npm ci` で依存を入れます。バージョンは `package.json` に固定しています。
+3. 変更後に `npm run check` を実行します。型、シミュレーション、文字と翻訳を確認します。
+4. 表示に関わる変更は `npm run dev` で日本語・英語の両方を確認します。
+5. 公開用のビルドは `npm run build` と `npm run preview` で確認します。
 
 ## 文字・翻訳
 
@@ -14,6 +12,6 @@ Godot の実行パスは `make test GODOT=/path/to/godot` のように指定で�
 
 ## 変更とレビュー
 
-変更目的に必要な範囲を編集し、無関係な一括整形や外部アドオンの変更を避けてください。PR には変更目的・確認結果・画面変更がある場合の画像を添えます。GitHub Pages への公開は `main` への push で実行されます。
+変更目的に必要な範囲を編集し、無関係な一括整形を避けてください。PR には変更目的・確認結果・画面変更がある場合の画像を添えます。GitHub Pages への公開は `main` への push で実行されます。
 
 秘密情報や個人設定はコミットしないでください。現在のゲームは静的データで動作するため、API キーや `.env` の用意は不要です。NASA の参考資料とゲーム内の調整値は区別して説明してください。

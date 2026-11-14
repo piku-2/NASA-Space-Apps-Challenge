@@ -9,8 +9,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {
-    ".gd", ".gdshader", ".tscn", ".tres", ".godot", ".cfg", ".uid",
     ".json", ".md", ".txt", ".yml", ".yaml", ".py", ".svg",
+    ".ts", ".tsx", ".html", ".css", ".mjs", ".cjs",
 }
 TEXT_NAMES = {"Makefile", "LICENSE", ".gitignore", ".gitattributes", ".editorconfig"}
 
@@ -25,8 +25,7 @@ def main() -> int:
     count = 0
     for name in sorted(set(result.stdout.decode("utf-8").split("\0")) - {""}):
         path = ROOT / name
-        # Vendor files keep their upstream encoding and formatting conventions.
-        if name.startswith(("addons/", ".idea/")) or not path.is_file():
+        if name.startswith(".idea/") or not path.is_file():
             continue
         if path.suffix not in TEXT_SUFFIXES and path.name not in TEXT_NAMES:
             continue

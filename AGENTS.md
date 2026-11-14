@@ -2,9 +2,10 @@
 
 ## プロジェクト
 
-- Godot 4.7.2 / GDScript の火星基地運営ゲーム「Mars Notebook」。
+- TypeScript / Phaser 4.2.1 / Vite の火星基地運営ゲーム「Mars Notebook」。
 - 7〜12歳向けに、資源・電力・放射線対策のトレードオフを伝える。
 - ユーザーとの会話・作業報告は日本語を基本とする。
+- 遊べる実装は `src/`。確認とビルドは npm だけで行う。
 
 ## 役割分担
 
@@ -16,31 +17,28 @@
 
 ## 構成
 
-- `scripts/main.gd`: UI、操作、描画、保存、言語切り替え。
-- `scripts/simulation.gd`: シミュレーション。UI やファイル操作に依存させない。
+- `src/domain/`: シミュレーション。UI やブラウザ API に依存させない。
+- `src/game/`: Phaser のボード、DOM の操作、表示文言。
 - `data/values.json`: 初期値・施設・イベント・ゲームバランス。
 - `i18n/ja.json`, `i18n/en.json`: 日本語・英語の表示文言。
-- `scenes/main.tscn`: 起動シーン。
-- `ui_assets/`: SVG と同梱フォント。フォントのライセンスも維持する。
-- `test/`: シミュレーション、UI、画面キャプチャ。
-- `addons/godot_mcp_toolkit/`: 外部アドオン。目的に必要な場合だけ変更する。
+- `ui_assets/`: SVG、施設画像、同梱フォント。フォントのライセンスも維持する。
+- `assets/sfx/`: 効果音とクレジット。ライセンス文も維持する。
 
 ## 編集方針
 
 - UTF-8（BOM なし）・LF を使い、日本語を壊さない。`.editorconfig` に従う。
-- 既存 GDScript の1スペースインデントを保ち、無関係な一括整形を避ける。
+- 無関係な一括整形を避ける。
 - 文言追加時は両言語のキーと `{0}` などのプレースホルダーを揃える。
 - UI は同梱フォントを使い、OS にある日本語フォントに依存しない。
 - ゲームの単位・調整値を NASA の実測値として表現しない。静的資料をライブ情報と呼ばない。
-- 保存形式を変える場合は旧バージョンからの移行を維持する。
-- `.uid`、素材、`AGENTS.md` は共有し、キャッシュ・秘密情報・ビルド成果物は共有しない。
+- 保存形式を変える場合は旧バージョンからの移行を維持する。ブラウザの保存キーは `mars_notebook_v1`。
+- 素材と `AGENTS.md` は共有し、キャッシュ・秘密情報・ビルド成果物は共有しない。
 - ユーザーの既存変更を保持する。コミット・push・公開は依頼の範囲に従う。
 
 ## 確認
 
-- `make check-text`: UTF-8、JSON、翻訳キーとプレースホルダーを確認。
-- `make test`: テキスト確認、Godot のインポート、既存のシミュレーション・UI チェック。
-- Godot が PATH にない場合は `make test GODOT=/path/to/godot`。
-- UI・フォントの変更時は `make run` で日本語・英語・ヘルプ・科学のノートを目視確認する。
-- Web に影響する変更は `make export-web` も確認する。対応する export templates が必要。
+- `npm run check`: 型検査、`node:test` のシミュレーション、UTF-8・JSON・翻訳。
+- `npm run dev`: ローカルで日本語・英語・ヘルプ・科学のノートを確認する。
+- `npm run build`: `dist/` を作る。GitHub Pages はこれを公開する。
+- `make check` と `make build` は npm の確認とビルドだけを呼ぶ。
 - 実行できなかったチェックは、理由を添えて報告する。

@@ -1,0 +1,21 @@
+{
+  "name": "mars-notebook",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test src/domain/simulation.test.ts src/game/session.test.ts",
+    "check": "npm run typecheck && npm run test && python3 scripts/check_text.py",
+    "preview": "vite preview --host 127.0.0.1 --port 8000"
+  },
+  "dependencies": {
+    "phaser": "4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "vite": "8.3.8"
+  }
+}

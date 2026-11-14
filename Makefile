@@ -1,26 +1,24 @@
-GODOT ?= godot
 PYTHON ?= python3
-TEST_DATA := $(CURDIR)/.godot/test-user-data
 
-.PHONY: check-text import test run export-web serve
+.PHONY: check-text typecheck test check build dev preview
 
 check-text:
 	$(PYTHON) scripts/check_text.py
 
-import:
-	GODOT_MCP_RUNTIME=0 $(GODOT) --headless --path . --editor --import
+typecheck:
+	npm run typecheck
 
-test: check-text import
-	mkdir -p "$(TEST_DATA)"
-	XDG_DATA_HOME="$(TEST_DATA)" GODOT_MCP_RUNTIME=0 $(GODOT) --headless --path . --script test/run_tests.gd
-	XDG_DATA_HOME="$(TEST_DATA)" GODOT_MCP_RUNTIME=0 $(GODOT) --headless --path . --script test/ui_checks.gd
+test: check-text
+	npm run test
 
-run:
-	GODOT_MCP_RUNTIME=0 $(GODOT) --path .
+check:
+	npm run check
 
-export-web: import
-	mkdir -p dist
-	GODOT_MCP_RUNTIME=0 $(GODOT) --headless --path . --export-release "Web" dist/index.html
+build:
+	npm run build
 
-serve:
-	$(PYTHON) -m http.server 8000 --bind 127.0.0.1 --directory dist
+dev:
+	npm run dev
+
+preview:
+	npm run preview

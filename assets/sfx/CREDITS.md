@@ -21,4 +21,4 @@ https://creativecommons.org/publicdomain/zero/1.0/
 | `milestone.ogg` | 研究10/20のバナー | Music Jingles | `Pizzicato jingles/jingles_PIZZI06.ogg` | https://kenney.nl/assets/music-jingles |
 | `streak.ogg` | 連続プラスの演出 | Music Jingles | `Pizzicato jingles/jingles_PIZZI00.ogg` | https://kenney.nl/assets/music-jingles |
 
-ファイルが見つからないときは、`scripts/main.gd` の `make_sfx()` で合成した予備の音を鳴らします。headless 実行時は音を鳴らしません。
+ゲームは同梱の ogg を再生します。

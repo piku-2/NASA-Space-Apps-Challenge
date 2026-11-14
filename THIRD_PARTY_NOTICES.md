@@ -19,10 +19,27 @@
 - ライセンス全文: [assets/sfx/LICENSE-Kenney-CC0.txt](assets/sfx/LICENSE-Kenney-CC0.txt)
 - ファイルごとの元素材と用途: [assets/sfx/CREDITS.md](assets/sfx/CREDITS.md)
 
-## Godot MCP Toolkit
+## Phaser
 
-`addons/godot_mcp_toolkit/` に含まれます。ライセンスと帰属情報は同ディレクトリの [LICENSE](addons/godot_mcp_toolkit/LICENSE) と [ATTRIBUTIONS.md](addons/godot_mcp_toolkit/ATTRIBUTIONS.md) を参照してください。
+- パッケージ: `phaser` 4.2.1
+- 制作: Phaser Studio, Inc.
+- ライセンス: MIT
+- ライセンス全文: https://github.com/phaserjs/phaser/blob/master/LICENSE.md
 
-## 既存のライセンス資料
+ゲーム画面の基地ボードに使います。
 
-[docs/GODOGEN-LICENSE.md](docs/GODOGEN-LICENSE.md) と [docs/TOOLKIT-LICENSE.txt](docs/TOOLKIT-LICENSE.txt) も保持しています。
+## Vite
+
+- パッケージ: `vite` 8.3.8
+- ライセンス: MIT
+- ライセンス全文: https://github.com/vitejs/vite/blob/main/LICENSE
+
+開発サーバーと、GitHub Pages 向けの静的ビルドに使います。
+
+## TypeScript
+
+- パッケージ: `typescript` 7.0.2
+- ライセンス: Apache License 2.0
+- ライセンス全文: https://github.com/microsoft/TypeScript/blob/main/LICENSE.txt
+
+型検査に使います。ゲームの規則そのものには入りません。
