@@ -242,18 +242,26 @@ describe('legacy simulation and save compatibility', () => {
     sameResources(woken, night)
 
     let flareMorning = initial()
-    flareMorning.day = 5
+    let flareDay = 0
+    for (let day = 1; day <= 4000; day++) {
+      if (eventOf({ day, seed: flareMorning.seed }) === 'flare') {
+        flareDay = day
+        break
+      }
+    }
+    assert.ok(flareDay > 0)
+    flareMorning.day = flareDay
     flareMorning = beginDay(flareMorning)
     const flareNight = resolveDay(flareMorning)
-    assert.equal(flareNight.day, 6)
-    assert.equal(shownDay(flareNight), 5)
+    assert.equal(flareNight.day, flareDay + 1)
+    assert.equal(shownDay(flareNight), flareDay)
     assert.equal(shownEvent(flareNight), 'flare')
-    assert.equal(morningAhead(flareNight), 'calm')
+    assert.equal(morningAhead(flareNight), eventOf({ day: flareDay + 1, seed: flareMorning.seed }))
     assert.equal(flareNight.report?.event, 'flare')
     const afterFlare = wake(flareNight)
-    assert.equal(shownDay(afterFlare), 6)
-    assert.equal(shownEvent(afterFlare), 'calm')
-    assert.equal(morningAhead(afterFlare), 'sun')
+    assert.equal(shownDay(afterFlare), flareDay + 1)
+    assert.equal(shownEvent(afterFlare), eventOf(afterFlare))
+    assert.equal(morningAhead(afterFlare), eventOf(afterFlare, 1))
     assert.equal(wake(woken).phase, 'morning')
     assert.equal(wake(woken).day, woken.day)
 
@@ -293,6 +301,19 @@ describe('legacy simulation and save compatibility', () => {
     assert.equal(v2?.phase, 'morning')
     assert.equal(restore({}, 4), null)
     assert.equal(restore(initial(), 9), null)
+  })
+
+  it('marks about 35 of every 1000 days as a particle day', () => {
+    let hits = 0
+    const days = 2000
+    const seeds = 20
+    for (let seed = 1; seed <= seeds; seed++) {
+      for (let day = 1; day <= days; day++) {
+        if (eventOf({ day, seed }) === 'flare') hits++
+      }
+    }
+    const fraction = hits / (days * seeds)
+    assert.ok(fraction > 0.025 && fraction < 0.045, String(fraction))
   })
 
   it('survives 15 days with research still in hand', () => {

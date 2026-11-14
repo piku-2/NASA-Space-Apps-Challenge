@@ -151,10 +151,20 @@ export function initial(): GameState {
   return state
 }
 
-export function eventOf(state: { day: number }, offset = 0): string {
+function mix(seed: number, index: number): number {
+  let x = (int(seed) >>> 0) ^ Math.imul(index + 1, 0x9e3779b1)
+  x = Math.imul(x ^ (x >>> 16), 0x7feb352d)
+  x = Math.imul(x ^ (x >>> 15), 0x846ca68b)
+  return (x ^ (x >>> 16)) >>> 0
+}
+
+export function eventOf(state: { day: number; seed?: number }, offset = 0): string {
   const events = CONFIG.events
   const index = int(state.day) - 1 + offset
-  return events[((index % events.length) + events.length) % events.length]
+  const base = events[((index % events.length) + events.length) % events.length]
+  const permille = Math.max(0, Math.min(1000, int(rule('sep_day_permille'))))
+  if (permille > 0 && mix(state.seed ?? 1, index) % 1000 < permille) return 'flare'
+  return base === 'flare' ? 'calm' : base
 }
 
 export function shownDay(state: GameState): number {
@@ -580,7 +590,7 @@ export function restore(candidate: unknown, version: number): GameState | null {
     const numeric = ['harvest', 'survival', 'power', 'material', 'science', 'health', 'damage', 'produced_survival', 'produced_power', 'produced_material', 'produced_science', 'healed', 'research_paused', 'cover_power', 'upkeep_power']
     for (const key of numeric) report[key] = isNum(report[key]) ? int(report[key]) : 0
     for (const key of ['shortage', 'sheltered', 'cover_committed']) report[key] = report[key] === true
-    report.event = typeof report.event === 'string' && CONFIG.events.includes(report.event) ? report.event : eventOf({ day: Math.max(1, normalized.day - 1) })
+    report.event = typeof report.event === 'string' && CONFIG.events.includes(report.event) ? report.event : eventOf({ day: Math.max(1, normalized.day - 1), seed: normalized.seed })
     report.new_discoveries = Array.isArray(report.new_discoveries) ? report.new_discoveries.filter(id => id === 'shielding' || id === 'crops') : []
     report.harvest_cells = Array.isArray(report.harvest_cells) ? report.harvest_cells.filter(index => isNum(index) && Number.isInteger(index) && index >= 0 && index < 18) : []
   }

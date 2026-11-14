@@ -1,5 +1,5 @@
 {
-  "source": "TBD — all resource units and effects are game balance, not physical NASA quantities",
+  "source": "Resource units and effects are game balance, not physical NASA quantities. sep_day_permille 35 rounds the DONKI SEP day fraction 200/5776 from 2010-08-14 to 2026-06-06. It is a static stand-in, not a live feed.",
   "initial": {
     "day": 1,
     "power": 16,
@@ -7,7 +7,7 @@
     "science": 0,
     "health": 100,
     "crew": 6,
-    "seed": 42,
+    "seed": 77,
     "shield": false,
     "shelter": false,
     "won": false,
@@ -51,7 +51,8 @@
     "unlock_plant_at": 20,
     "plant_unlock_bonus": 3,
     "flare_cover_power": 4,
-    "flare_cover_factor": 0.5
+    "flare_cover_factor": 0.5,
+    "sep_day_permille": 35
   },
   "crew": [
     {"id": "aoi", "specialty": "solar"},
@@ -75,12 +76,12 @@
     "calm",
     "dust",
     "sun",
-    "flare",
+    "calm",
     "calm",
     "sun",
     "dust",
     "calm",
-    "flare",
+    "calm",
     "sun",
     "calm",
     "dust",
