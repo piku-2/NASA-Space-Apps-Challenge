@@ -6,13 +6,14 @@
     "material": 12,
     "science": 0,
     "health": 100,
-    "crew": 5,
+    "crew": 6,
     "seed": 42,
     "shield": false,
     "shelter": false,
     "won": false,
     "over": false,
-    "survival": 10
+    "survival": 10,
+    "flare_cover": false
   },
   "rules": {
     "days": 15,
@@ -47,14 +48,17 @@
     "unlock_shield_at": 10,
     "shield_factor_plus": 0.2,
     "unlock_plant_at": 20,
-    "plant_unlock_bonus": 3
+    "plant_unlock_bonus": 3,
+    "flare_cover_power": 4,
+    "flare_cover_factor": 0.5
   },
   "crew": [
     {"id": "aoi", "specialty": "solar"},
     {"id": "ren", "specialty": "water"},
     {"id": "mio", "specialty": "greenhouse"},
     {"id": "sora", "specialty": "lab"},
-    {"id": "haru", "specialty": "mine"}
+    {"id": "haru", "specialty": "mine"},
+    {"id": "rikuto", "specialty": "solar"}
   ],
   "facilities": [
     "solar",

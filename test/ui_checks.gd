@@ -43,7 +43,7 @@ func run_checks() -> void:
  game.choose_crew(4)
  game.select_cell(7)
  assert(int(game.state.cells[4].crew)==0 and int(game.state.cells[7].crew)==1)
- assert(game.Sim.idle(game.state)==2)
+ assert(game.Sim.idle(game.state)==3)
  game.choose_crew(-1)
  game.select_cell(7)
  game.choose_crew(1)
@@ -105,7 +105,9 @@ func run_checks() -> void:
  game.choose_crew(-1)
  game.select_cell(5)
  game.assign(1)
+ game.choose_cover(true)
  assert(int(game.state.material)==int(locked.material))
+ assert(not bool(game.state.get("flare_cover", false)))
  assert(int(game.state.cells[5].crew)==int(locked.cells[5].crew))
  assert(bool(game.state.shelter)==bool(locked.shelter))
  game.state.phase="morning"
@@ -125,7 +127,7 @@ func run_checks() -> void:
  assert(int(game.state.survival)==16)
  assert(not game.state.has("water") and not game.state.has("food") and not game.state.has("delivery"))
  assert(int(game.state.cells[4].progress)==0)
- assert(game.state.roster.size()==5 and str(game.state.phase)=="morning")
+ assert(game.state.roster.size()==6 and str(game.state.phase)=="morning")
  game.state.phase="night"
  game.state.report={"harvest":6,"science":0,"new_discoveries":[]}
  game.save_game()
@@ -137,6 +139,75 @@ func run_checks() -> void:
  assert(game.Sim.crew_cell(game.state,"ren")==game.Sim.crew_cell(night_state,"ren"))
  game.modal="help"
  game.refresh()
+ game.motion_frozen=true
+ game.state=game.Sim.initial()
+ game.selected_crew=""
+ game.crew_source=-2
+ game.set_language("ja")
+ var quips: Dictionary={}
+ for id: String in ["aoi","ren","mio","sora","haru","rikuto"]:
+  var line: String=game.trk("quip_"+id)
+  assert(not quips.has(line))
+  quips[line]=true
+ game.set_language("en")
+ quips={}
+ for id: String in ["aoi","ren","mio","sora","haru","rikuto"]:
+  var line: String=game.trk("quip_"+id)
+  assert(not quips.has(line))
+  quips[line]=true
+ game.set_language("ja")
+ game.selected_crew="mio"
+ game.select_cell(4)
+ assert(game.Sim.crew_cell(game.state,"mio")==4)
+ assert(bool(game.quip_badge.matched) and int(game.quip_badge.bonus)==int(game.Sim.expert_bonus("greenhouse")))
+ assert(game.trk("quip_mio") in game.message and str(game.Sim.expert_bonus("greenhouse")) in game.message)
+ game.selected_crew="aoi"
+ game.select_cell(4)
+ assert(game.Sim.crew_cell(game.state,"aoi")==4)
+ assert(not bool(game.quip_badge.matched))
+ assert(game.trk("crew_aoi") in game.message and game.trk("greenhouse") in game.message)
+ game.state=game.Sim.initial()
+ game.state.day=5
+ game.state.power=40
+ game.state=game.Sim.place(game.state,"sora",7)
+ var before_choice: Dictionary=game.state.duplicate(true)
+ game.refresh()
+ var choice_lines: Dictionary=game.flare_choice_lines()
+ assert(str(int(game.Sim.project(game.state,false).science)-int(game.state.science)) in str(choice_lines.keep))
+ assert(str(absi(int(game.Sim.project(game.state,false).health)-int(game.state.health))) in str(choice_lines.keep))
+ assert(str(int(game.Sim.R.flare_cover_power)) in str(choice_lines.cover))
+ assert(str(int(game.Sim.project(game.state,true).report.damage)) in str(choice_lines.cover))
+ assert(bool(choice_lines.ready))
+ assert(game.state==before_choice)
+ game.choose_cover(true)
+ assert(bool(game.state.flare_cover))
+ assert(int(game.state.power)==int(before_choice.power) and int(game.state.science)==int(before_choice.science))
+ game.state.phase="day"
+ var day_snapshot: Dictionary=game.state.duplicate(true)
+ game.choose_cover(false)
+ assert(game.state==day_snapshot)
+ var covered_night: Dictionary=game.Sim.resolve_day(game.state)
+ game.state=covered_night
+ var settled: Dictionary=game.state.duplicate(true)
+ game.motion_frozen=false
+ game.fx_t=0.0
+ game.fx_playing=true
+ game.presentation_step(0.35)
+ assert(game.state==settled)
+ assert(str(game.state.phase)=="night" and int(game.state.day)==int(settled.day))
+ assert(game.shown_amount("health")!=int(settled.health))
+ game.presentation_step(3.0)
+ assert(not game.fx_playing)
+ assert(game.fx_t==1.0)
+ assert(game.shown_amount("health")==int(settled.health))
+ assert(game.shown_amount("science")==int(settled.science))
+ assert(game.state==settled)
+ game.save_game()
+ game.fx_t=0.2
+ game.fx_playing=true
+ game.load_game()
+ assert(game.fx_t==1.0 and not game.fx_playing)
+ assert(int(game.state.health)==int(settled.health) and bool(game.state.flare_cover)==bool(settled.flare_cover))
  print("PASS: direct crew assignment, movement, capacity, palette building, forecast, localization and save migration")
  game.state=game.Sim.initial()
  game.save_game()

@@ -17,8 +17,8 @@ func same_resources(a: Dictionary, b: Dictionary) -> bool:
  return true
 func _initialize() -> void:
  var s: Dictionary=Sim.initial()
- verify(Sim.idle(s)==3,"Initial available crew")
- verify(int(s.crew)==5 and s.roster.size()==5,"Five named crew keep the headcount")
+ verify(Sim.idle(s)==4,"Initial available crew")
+ verify(int(s.crew)==6 and s.roster.size()==6,"Six named crew keep the headcount")
  verify(not s.has("water") and not s.has("food"),"One survival resource replaces water and food")
  var seen: Dictionary={}
  for p: Dictionary in s.roster:
@@ -41,6 +41,7 @@ func _initialize() -> void:
  verify(int(n.survival)-int(s.survival)==9,"Fifth day harvests 6 plus Mio's 3")
  verify(int(n.cells[4].progress)==0,"Harvest resets progress")
  verify(int(n.report.harvest)==9,"Night report records the harvest")
+ verify(4 in n.report.harvest_cells,"The harvest cell is marked for the night pulse")
  s=Sim.place(s,"mio",-1)
  n=Sim.calculate(s)
  verify(int(n.cells[4].progress)==4,"Unstaffed plant pauses")
@@ -224,14 +225,14 @@ func _initialize() -> void:
  legacy.delivery=3
  var v1: Dictionary=Sim.restore(legacy,1)
  verify(int(v1.survival)==16 and not v1.has("water") and not v1.has("food") and not v1.has("delivery"),"Version 1 save migrates into survival")
- verify(v1.roster.size()==5 and str(v1.phase)=="morning" and Sim.idle(v1)==3,"Version 1 save gains five crew and a morning")
+ verify(v1.roster.size()==6 and str(v1.phase)=="morning" and Sim.idle(v1)==4,"Version 1 save gains six crew and a morning")
  verify(int(v1.cells[1].crew)==1 and int(v1.cells[10].crew)==1,"Version 1 assignments are kept")
  var v2_source: Dictionary=Sim.initial()
  v2_source.erase("roster")
  v2_source.erase("phase")
  v2_source.erase("discoveries")
  var v2: Dictionary=Sim.restore(v2_source,2)
- verify(int(v2.survival)==10 and v2.roster.size()==5 and str(v2.phase)=="morning","Version 2 save gains roster and morning")
+ verify(int(v2.survival)==10 and v2.roster.size()==6 and str(v2.phase)=="morning","Version 2 save gains roster and morning")
  verify(Sim.restore({},4).is_empty() and Sim.restore(Sim.initial(),9).is_empty(),"Unknown save versions are rejected")
  for use_plant: bool in [false,true]:
   s=Sim.initial()
@@ -255,5 +256,109 @@ func _initialize() -> void:
    s=Sim.wake(s)
   verify(bool(s.won),"Full mission reaches victory without resupply")
   verify(int(s.science)>=30,"Victory research is still on hand")
+ verify(Sim.expert_bonus("solar")==2 and Sim.expert_bonus("water")==1 and Sim.expert_bonus("greenhouse")==3,"Specialty numbers come from the rules")
+ verify(Sim.expert_bonus("lab")==2 and Sim.expert_bonus("mine")==2 and Sim.expert_bonus("habitat")==0,"Lab and mine bonuses stay on their buildings")
+ verify(Sim.specialty_matches("mio","greenhouse") and not Sim.specialty_matches("mio","solar"),"A bonus requires the matching facility")
+ verify(Sim.flare_harm(0,false,false)==18 and Sim.flare_harm(0,true,false)==6,"Base flare and shield harm stay put")
+ verify(Sim.flare_harm(10,true,false)==4 and Sim.flare_harm(0,false,true)==9,"Research shield and cover have their own harm")
+ verify(Sim.flare_harm(0,true,true)==3 and Sim.flare_harm(10,true,true)==2,"Cover can stack with a shield")
+ s=park(Sim.initial())
+ s.day=5
+ s.power=40
+ s=Sim.place(s,"sora",7)
+ var untouched: Dictionary=s.duplicate(true)
+ var keep: Dictionary=Sim.project(s,false)
+ var braced: Dictionary=Sim.project(s,true)
+ verify(s==untouched,"A flare preview does not mutate the morning")
+ verify(int(keep.science)==5 and int(keep.health)==82 and int(keep.report.damage)==18,"Keeping research takes the full flare")
+ verify(int(braced.science)==0 and int(braced.health)==91 and int(braced.report.damage)==9,"Cover halves harm and pauses the lab")
+ verify(int(braced.report.research_paused)==5 and bool(braced.report.cover_committed),"The paused research is reported")
+ verify(int(keep.power)-int(braced.power)==int(Sim.R.flare_cover_power),"Cover spends extra power on top of lab work")
+ verify(int(braced.science)<int(keep.science) and int(braced.health)>int(keep.health),"Neither choice wins both research and health")
+ verify(not bool(braced.shield) and not bool(braced.shelter),"Cover does not build a shield or open shelter")
+ s.power=100
+ keep=Sim.project(s,false)
+ braced=Sim.project(s,true)
+ verify(int(braced.power)>50 and int(braced.science)==int(keep.science)-5,"Stored power does not make cover free")
+ var empty_lab: Dictionary=park(Sim.initial())
+ empty_lab.day=5
+ empty_lab.flare_cover=true
+ var bare: Dictionary=Sim.calculate(empty_lab)
+ verify(int(bare.health)==82 and int(bare.report.research_paused)==0 and not bool(bare.report.cover_committed),"Cover without lab crew does not reduce harm")
+ var poor: Dictionary=park(Sim.initial())
+ poor.day=5
+ poor.power=0
+ poor=Sim.place(poor,"sora",7)
+ poor.flare_cover=true
+ var broke: Dictionary=Sim.calculate(poor)
+ verify(not bool(broke.report.cover_committed) and int(broke.science)==5 and int(broke.health)==82,"Cover does nothing until its extra power is paid")
+ var low: Dictionary=park(Sim.initial())
+ low.day=5
+ low.health=12
+ low.power=40
+ low=Sim.place(low,"sora",7)
+ var died: Dictionary=Sim.project(low,false)
+ var lived: Dictionary=Sim.project(low,true)
+ verify(bool(died.over) and int(died.health)<=0,"Keeping research can empty health")
+ verify(not bool(lived.over) and int(lived.health)==3 and int(lived.science)==int(low.science),"Cover can keep that morning alive")
+ var locked: Dictionary=Sim.begin_day(park(Sim.initial()))
+ verify(not bool(Sim.set_flare_cover(locked,true).get("flare_cover",false)),"Flare cover waits for morning")
+ var plan: Dictionary=park(Sim.initial())
+ plan.day=5
+ plan.power=40
+ plan=Sim.place(plan,"sora",7)
+ plan=Sim.set_flare_cover(plan,true)
+ verify(bool(plan.flare_cover) and int(plan.power)==40 and int(plan.science)==0,"Choosing cover does not spend resources")
+ var chosen_day: Dictionary=Sim.begin_day(plan)
+ verify(bool(chosen_day.flare_cover) and same_resources(chosen_day,plan),"Daytime keeps the choice without producing")
+ var resolved: Dictionary=Sim.resolve_day(chosen_day)
+ var projected: Dictionary=Sim.calculate(plan)
+ verify(same_resources(resolved,projected),"Night matches the flare-cover forecast")
+ verify(int(resolved.report.damage)==int(projected.report.damage) and int(resolved.report.research_paused)==5,"Night reports the same cover effect")
+ var replay: Dictionary=Sim.resolve_day(resolved)
+ verify(same_resources(replay,resolved) and int(replay.health)==int(resolved.health),"Replaying night does not charge another day")
+ var after_choice: Dictionary=Sim.wake(resolved)
+ verify(not bool(after_choice.flare_cover) and same_resources(after_choice,resolved),"The next morning clears the one-day choice")
+ var legacy_choice: Dictionary=Sim.initial()
+ legacy_choice.erase("flare_cover")
+ var restored_choice: Dictionary=Sim.restore(legacy_choice,3)
+ verify(not restored_choice.is_empty() and not bool(restored_choice.flare_cover),"A version 3 save without the choice keeps researching")
+ var legacy_v1: Dictionary=Sim.initial()
+ legacy_v1.erase("flare_cover")
+ legacy_v1.erase("roster")
+ legacy_v1.erase("phase")
+ legacy_v1.erase("discoveries")
+ legacy_v1.erase("survival")
+ legacy_v1.water=8
+ legacy_v1.food=8
+ var restored_v1: Dictionary=Sim.restore(legacy_v1,1)
+ verify(not restored_v1.is_empty() and not bool(restored_v1.flare_cover) and int(restored_v1.survival)==8,"A version 1 save defaults the choice to research")
+ var plated: Dictionary=park(Sim.initial())
+ plated.day=5
+ plated.shield=true
+ plated.science=10
+ plated.power=40
+ plated=Sim.place(plated,"sora",7)
+ var plated_keep: Dictionary=Sim.project(plated,false)
+ var plated_cover: Dictionary=Sim.project(plated,true)
+ verify(int(plated_keep.report.damage)==4 and int(plated_keep.science)==15,"A researched shield still lets the lab work")
+ verify(int(plated_cover.report.damage)==2 and int(plated_cover.science)==10,"Cover stacks with a shield by pausing research")
+ for mode: String in ["keep","cover"]:
+  s=Sim.initial()
+  s=Sim.place(s,"sora",7)
+  for day: int in range(15):
+   verify(str(s.phase)=="morning","Choice mission plans in the morning")
+   s=Sim.set_shelter(s,false)
+   s=Sim.set_flare_cover(s, mode=="cover" and Sim.event(s)=="flare")
+   var morning_resources: Dictionary=s.duplicate(true)
+   s=Sim.begin_day(s)
+   verify(same_resources(s,morning_resources),"The choice does not produce at sunrise")
+   s=Sim.resolve_day(s)
+   verify(not bool(s.over),"Choice mission survives "+mode+" "+str(day+1))
+   var repeated_night: Dictionary=Sim.resolve_day(s)
+   verify(same_resources(repeated_night,s),"Night feedback cannot charge the choice twice")
+   s=Sim.wake(s)
+  verify(bool(s.won),"Full mission wins by "+mode)
+  verify(int(s.science)>=30,"The winning choice still holds its research")
  print("PASS: ",checks," simulation checks")
  quit()

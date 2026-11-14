@@ -9,8 +9,8 @@ static func initial() -> Dictionary:
  for i: int in range(18):
   var k: String = {0:"solar",1:"water",4:"greenhouse",7:"lab",10:"habitat"}.get(i, "")
   s.cells.append({"kind":k,"level":1,"crew":0,"progress":0})
- # Aoi rests in the habitat and Ren runs water. The other three wait for the morning plan.
- s["roster"] = [{"id":"aoi","cell":10},{"id":"ren","cell":1},{"id":"mio","cell":-1},{"id":"sora","cell":-1},{"id":"haru","cell":-1}]
+ # Aoi rests in the habitat and Ren runs water. The other four wait for the morning plan.
+ s["roster"] = [{"id":"aoi","cell":10},{"id":"ren","cell":1},{"id":"mio","cell":-1},{"id":"sora","cell":-1},{"id":"haru","cell":-1},{"id":"rikuto","cell":-1}]
  s["phase"] = "morning"
  s["discoveries"] = []
  _sync_counts(s)
@@ -35,6 +35,24 @@ static func specialty(id: String) -> String:
  for d: Dictionary in CONFIG.crew:
   if str(d.id) == id: return str(d.specialty)
  return ""
+static func expert_bonus(kind: String) -> int:
+ match kind:
+  "solar": return int(R.solar_expert)
+  "water": return int(R.water_expert)
+  "greenhouse": return int(R.plant_expert)
+  "lab": return int(R.lab_expert)
+  "mine": return int(R.mine_expert)
+  _: return 0
+static func specialty_matches(id: String, kind: String) -> bool:
+ return specialty(id) == kind and expert_bonus(kind) > 0
+# Rounded flare harm. Cover halves the hit only after a real lab commitment.
+static func flare_harm(science_before: int, shielded: bool, covered: bool) -> int:
+ var factor: float = 1.0
+ if shielded:
+  factor = float(R.shield_factor_plus) if science_before >= int(R.unlock_shield_at) else float(R.shield_factor)
+ var damage: int = int(round(float(R.flare_damage) * factor))
+ if covered: damage = int(round(float(damage) * float(R.flare_cover_factor)))
+ return damage
 static func can_plan(s: Dictionary) -> bool:
  return str(s.get("phase","morning")) == "morning" and not bool(s.get("over", false))
 static func idle(s: Dictionary) -> int:
@@ -106,6 +124,16 @@ static func set_shelter(s: Dictionary, active: bool) -> Dictionary:
  var n: Dictionary = s.duplicate(true)
  n.shelter = active
  return n
+# Morning-only. On any other day the flag is cleared so the next flare asks again.
+static func set_flare_cover(s: Dictionary, active: bool) -> Dictionary:
+ if not can_plan(s): return s.duplicate(true)
+ var n: Dictionary = s.duplicate(true)
+ n.flare_cover = active and event(n) == "flare"
+ return n
+static func project(s: Dictionary, cover: bool) -> Dictionary:
+ var n: Dictionary = s.duplicate(true)
+ n.flare_cover = cover
+ return calculate(n)
 static func begin_day(s: Dictionary) -> Dictionary:
  if str(s.get("phase","morning")) != "morning" or bool(s.get("over", false)): return s.duplicate(true)
  var n: Dictionary = s.duplicate(true)
@@ -121,6 +149,7 @@ static func wake(s: Dictionary) -> Dictionary:
  if str(s.get("phase","")) != "night" or bool(s.get("over", false)): return s.duplicate(true)
  var n: Dictionary = s.duplicate(true)
  n.phase = "morning"
+ n.flare_cover = false
  return n
 static func calculate(s: Dictionary) -> Dictionary:
  var n: Dictionary = s.duplicate(true)
@@ -137,6 +166,11 @@ static func calculate(s: Dictionary) -> Dictionary:
  var material_made: int = 0
  var science_made: int = 0
  var healed: int = 0
+ var research_paused: int = 0
+ var cover_power: int = 0
+ var cover_committed: bool = false
+ var harvest_cells: Array = []
+ var want_cover: bool = ev == "flare" and bool(s.get("flare_cover", false)) and not bool(s.shelter)
  n["shortage"] = false
  for index: int in range(n.cells.size()):
   var c: Dictionary = n.cells[index]
@@ -177,13 +211,22 @@ static func calculate(s: Dictionary) -> Dictionary:
       harvest += amount
       survival_made += amount
       n.survival += amount
+      harvest_cells.append(index)
       progress = 0
      n.cells[index]["progress"] = progress
     "lab":
      var learned: int = int(R.lab)*staff*level
      if _specialist_at(n, index, "lab"): learned += int(R.lab_expert)
-     science_made += learned
-     n.science += learned
+     var extra: int = int(R.flare_cover_power)
+     # The lab's own power is already paid. Cover also spends extra power and skips the research.
+     if want_cover and int(n.power) >= extra:
+      n.power -= extra
+      research_paused += learned
+      cover_power += extra
+      cover_committed = true
+     else:
+      science_made += learned
+      n.science += learned
     "mine":
      var mined: int = int(R.mine)*staff*level
      if _specialist_at(n, index, "mine"): mined += int(R.mine_expert)
@@ -197,9 +240,7 @@ static func calculate(s: Dictionary) -> Dictionary:
  n.survival -= int(R.daily_survival)
  var damage: int = 0
  if ev == "flare" and not bool(s.shelter):
-  var factor: float = float(R.shield_factor)
-  if bool(s.shield) and science_before >= int(R.unlock_shield_at): factor = float(R.shield_factor_plus)
-  damage = int(round(float(R.flare_damage) * (factor if bool(s.shield) else 1.0)))
+  damage = flare_harm(science_before, bool(s.shield), cover_committed)
   n.health -= damage
  var owned: Array = []
  if s.get("discoveries") is Array:
@@ -234,7 +275,11 @@ static func calculate(s: Dictionary) -> Dictionary:
   "shortage": bool(n.shortage),
   "sheltered": bool(s.shelter),
   "event": ev,
-  "new_discoveries": fresh
+  "new_discoveries": fresh,
+  "research_paused": research_paused,
+  "cover_power": cover_power,
+  "cover_committed": cover_committed,
+  "harvest_cells": harvest_cells
  }
  return n
 static func restore(candidate: Dictionary, version: int) -> Dictionary:
@@ -243,6 +288,8 @@ static func restore(candidate: Dictionary, version: int) -> Dictionary:
  if version == 1:
   s["survival"] = int((int(s.get("water",18)) + int(s.get("food",18))) / 2.0)
  for legacy: String in ["water","food","delivery"]: s.erase(legacy)
+ # Older saves omit the flare choice. Missing or mistyped values stay on "keep research".
+ if not (s.get("flare_cover") is bool): s["flare_cover"] = false
  for k: String in CONFIG.initial.keys():
   if not s.has(k) or typeof(s[k]) != typeof(CONFIG.initial[k]) and not (s[k] is float or s[k] is int): return {}
   if s[k] is float: s[k] = int(s[k])
